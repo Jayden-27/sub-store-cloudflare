@@ -1926,6 +1926,7 @@ const handleEditGlobalClick = () => {
   background: var(--background-color);
   border-top: 1px solid var(--divider-color);
   @include centered-fixed-container;
+  @include desktop-content-offset;
 
   .btn {
     border-radius: 8px;

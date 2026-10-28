@@ -15,7 +15,18 @@
   }
   
   @media screen and (min-width: 1200px) {
-    max-width: 900px;
+    max-width: 800px;
+  }
+}
+
+// 生效于侧栏出现后的屏宽：抵消「侧栏 + 主列」整体居中带来的半个侧栏偏移
+@mixin desktop-content-offset {
+  @media screen and (min-width: 768px) {
+    left: calc(50% + 30px);
+  }
+
+  @media screen and (min-width: 1220px) {
+    left: calc(50% + 80px);
   }
 }
 
@@ -53,4 +64,4 @@ $breakpoint-xl: 1200px;
 $container-width-sm: 85%;
 $container-width-md: 630px;
 $container-width-lg: 700px;
-$container-width-xl: 900px;
+$container-width-xl: 800px;

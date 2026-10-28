@@ -980,6 +980,7 @@ const importTips = () => {
     -webkit-backdrop-filter: blur(var(--nav-bar-blur));
     background: var(--nav-bar-color);
     @include centered-fixed-container;
+    @include desktop-content-offset;
       @media screen and (min-width: 768px) {
         border-radius: var(--item-card-radios);
         overflow: hidden;

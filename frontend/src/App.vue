@@ -1,7 +1,7 @@
 <template>
   <NavBar />
   <SideBar v-show="shouldShowSideBar" />
-  <main class="page-body">
+  <main class="page-body" :class="{ 'with-sidebar': shouldShowSideBar }">
     <router-view />
   </main>
 </template>
@@ -64,6 +64,17 @@ watchEffect(() => {
     overflow: auto;
     width: 100%;
     @include responsive-container-width;
+
+    // 宽屏下侧栏贴着主列左侧固定，偏移侧栏宽度让「侧栏 + 内容」整体居中
+    &.with-sidebar {
+      @media screen and (min-width: 768px) {
+        margin-left: 60px;
+      }
+
+      @media screen and (min-width: 1220px) {
+        margin-left: 160px;
+      }
+    }
   }
 
   overflow-y: auto;

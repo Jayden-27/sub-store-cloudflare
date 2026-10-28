@@ -1,6 +1,7 @@
 <template>
   <div
     class="nav-bar-wrapper"
+    :class="{ 'with-sidebar': shouldShowSideBar }"
   >
     <nav>
       <nut-navbar
@@ -109,6 +110,7 @@ import { initStores } from "@/utils/initApp";
 import { useMethodStore } from '@/store/methodStore';
 import { useAppNotifyStore } from "@/store/appNotify";
 import { useListSearchStore } from "@/store/listSearch";
+import { useWideScreenNarrowMode } from "@/hooks/useWideScreenNarrowMode";
 import i18n from "@/locales";
 
 const { t:i18n_global } = i18n.global;
@@ -121,6 +123,7 @@ const globalStore = useGlobalStore();
 const systemStore = useSystemStore();
 const settingsStore = useSettingsStore();
 const listSearchStore = useListSearchStore();
+const { shouldShowSideBar } = useWideScreenNarrowMode();
 const { appearanceSetting } = storeToRefs(settingsStore);
 
 onMounted(() => {
@@ -270,6 +273,10 @@ const refresh = async () => {
   height: v-bind(navBarHeight);
   z-index: 20;
   @include centered-fixed-container;
+
+  &.with-sidebar {
+    @include desktop-content-offset;
+  }
 
   nav {
     .nut-navbar {

@@ -99,16 +99,21 @@ const { navBarHeight } = storeToRefs(systemStore);
     -webkit-backdrop-filter: blur(var(--tab-bar-blur, 20px));
 
     // Anchor purely to the left of the .page-body
-    left: calc(50vw - 315px);
+    left: calc(50vw - 285px);
     transform: translateX(-100%);
   }
 
   @media screen and (min-width: 900px) {
-    left: calc(50vw - 350px);
+    left: calc(50vw - 320px);
   }
 
+  // 1200px 起主列上限收窄到 800px，而侧栏要到 1220px 才展开，中间区间单独定位
   @media screen and (min-width: 1200px) {
-    left: calc(50vw - 450px);
+    left: calc(50vw - 370px);
+  }
+
+  @media screen and (min-width: 1220px) {
+    left: calc(50vw - 320px);
   }
 
   &.is-expanded {
