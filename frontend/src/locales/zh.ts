@@ -729,6 +729,7 @@ export default {
       custom: "自定义模板",
       editTitle: "编辑规则模板",
       importTitle: "导入规则模板",
+      createTitle: "新建规则模板",
       idLabel: "模板 ID",
       idPlaceholder: "模板 ID，例如 custom-mihomo",
       nameLabel: "显示名称",

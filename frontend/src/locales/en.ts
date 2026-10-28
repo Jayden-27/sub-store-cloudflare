@@ -729,6 +729,7 @@ export default {
       custom: "Custom",
       editTitle: "Edit rule template",
       importTitle: "Import rule template",
+      createTitle: "New rule template",
       idLabel: "Template ID",
       idPlaceholder: "Template ID, e.g. custom-mihomo",
       nameLabel: "Display name",

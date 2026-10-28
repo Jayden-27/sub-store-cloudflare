@@ -136,11 +136,19 @@
 
     <nut-popup v-model:visible="templateImportVisible" position="bottom" round closeable :style="{ height: '82vh' }">
       <div class="template-import-panel">
-        <h2>{{ templateEditingId ? t("myPage.templates.editTitle") : t("myPage.templates.importTitle") }}</h2>
+        <h2>{{ templateDialogTitle }}</h2>
         <div class="template-form">
           <div class="template-form__row">
             <span class="template-form__label">{{ t("myPage.templates.idLabel") }}</span>
-            <span class="template-form__value is-muted">{{ templateForm.id || "—" }}</span>
+            <nut-input
+              v-if="!templateEditingId"
+              class="template-form__input"
+              v-model.trim="templateForm.id"
+              :border="false"
+              :placeholder="t('myPage.templates.idPlaceholder')"
+              input-align="right"
+            />
+            <span v-else class="template-form__value is-muted">{{ templateForm.id }}</span>
           </div>
           <div class="template-form__row">
             <span class="template-form__label">{{ t("myPage.templates.nameLabel") }}</span>
@@ -216,9 +224,14 @@ const requestSaving = ref(false);
 const templateImporting = ref(false);
 const templateImportVisible = ref(false);
 const templateEditingId = ref("");
+const templateFromFile = ref(false);
 const templateTargetPickerVisible = ref(false);
 const templateEditorLanguage = ref<"yaml" | "json">("yaml");
 const templates = ref<any[]>([]);
+const templateDialogTitle = computed(() => {
+  if (templateEditingId.value) return t("myPage.templates.editTitle");
+  return templateFromFile.value ? t("myPage.templates.importTitle") : t("myPage.templates.createTitle");
+});
 
 const requestForm = reactive({
   defaultUserAgent: "",
@@ -322,6 +335,7 @@ const selectTemplateFile = () => {
 
 const openTemplateImport = () => {
   templateEditingId.value = "";
+  templateFromFile.value = false;
   templateForm.id = "";
   templateForm.name = "";
   templateForm.target = "mihomo";
@@ -332,6 +346,7 @@ const openTemplateImport = () => {
 
 const openTemplateEdit = (template: any) => {
   templateEditingId.value = template.name;
+  templateFromFile.value = false;
   templateForm.id = template.name;
   templateForm.name = template.displayName || template.name;
   templateForm.target = template.target || "mihomo";
@@ -347,6 +362,7 @@ const importTemplateFromFile = async (event: Event) => {
   if (!file) return;
 
   templateEditingId.value = "";
+  templateFromFile.value = true;
   templateForm.id = file.name.replace(/\.(json|ya?ml)$/i, "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
   templateForm.name = file.name.replace(/\.(json|ya?ml)$/i, "");
   templateForm.target = "mihomo";
