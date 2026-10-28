@@ -98,13 +98,34 @@
         </div>
       </div>
       <div v-if="requestEditing" class="config-input-wrapper">
-        <nut-input class="input" v-model="requestForm.defaultUserAgent" :placeholder="t('myPage.request.defaultUserAgent')" type="text" input-align="left" />
-        <nut-input class="input" v-model="requestForm.defaultFlowUserAgent" :placeholder="t('myPage.request.defaultFlowUserAgent')" type="text" input-align="left" />
-        <nut-input class="input" v-model="requestForm.defaultTimeout" :placeholder="t('myPage.request.defaultTimeout')" type="number" input-align="left" />
-        <nut-input class="input" v-model="requestForm.backendRequestConcurrency" :placeholder="t('myPage.request.backendRequestConcurrency')" type="number" input-align="left" />
-        <nut-input class="input" v-model="requestForm.backendRequestConcurrencyWaitTime" :placeholder="t('myPage.request.backendRequestConcurrencyWaitTime')" type="number" input-align="left" />
-        <nut-input class="input" v-model="requestForm.remoteCacheTtl" :placeholder="t('myPage.request.remoteCacheTtl')" type="number" input-align="left" />
-        <nut-input class="input" v-model="requestForm.nodeInfoApiUrl" :placeholder="t('myPage.request.nodeInfoApiUrl')" type="text" input-align="left" />
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.defaultUserAgent') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.defaultUserAgent" type="text" input-align="right" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.defaultFlowUserAgent') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.defaultFlowUserAgent" type="text" input-align="right" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.defaultTimeout') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.defaultTimeout" type="number" input-align="right" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.backendRequestConcurrency') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.backendRequestConcurrency" type="number" input-align="right" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.backendRequestConcurrencyWaitTime') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.backendRequestConcurrencyWaitTime" type="number" input-align="right" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.remoteCacheTtl') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.remoteCacheTtl" type="number" input-align="right" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">{{ t('myPage.request.nodeInfoApiUrl') }}</span>
+          <nut-input class="setting-input" v-model="requestForm.nodeInfoApiUrl" type="text" input-align="right" />
+        </div>
         <label class="boolean-setting">
           <input v-model="requestForm.remoteCacheStaleOnError" type="checkbox" />
           {{ t('myPage.request.remoteCacheStaleOnError') }}
@@ -735,13 +756,41 @@ onMounted(fetchTemplates);
 }
 
 .config-input-wrapper {
-  padding: 8px 16px 16px;
+  padding: 0 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 
-  .input {
-    border-bottom: 1px solid var(--divider-color);
+  .setting-row {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+
+    & + .setting-row {
+      border-top: 1px solid var(--divider-color);
+    }
+  }
+
+  .setting-label {
+    flex: 0 0 auto;
+    color: var(--second-text-color);
+  }
+
+  .setting-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    background-color: transparent;
+
+    :deep(.nut-input__value),
+    :deep(.nut-input__value input) {
+      padding: 0;
+      background: transparent;
+      background-color: transparent;
+      box-shadow: none;
+    }
   }
 }
 

@@ -192,6 +192,8 @@ export const useSubsStore = defineStore('subsStore', {
           if (isAbortError(e) || requestSignal.aborted) {
             throw e;
           }
+          // 请求彻底失败时写入空记录，避免列表一直停留在“加载中”
+          this.flows[url] = {};
         } finally {
           clearRequest();
         }

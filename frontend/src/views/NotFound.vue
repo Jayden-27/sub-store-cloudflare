@@ -19,7 +19,10 @@ const isBackend = /\/(api|download)\/.+/.test(route.fullPath)
 <style lang="scss" scoped>
   .wrapper {
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 100%;
+    padding: calc(56px + 16px) 24px 24px;
+    box-sizing: border-box;
     display: flex;
     justify-content: center;
     align-items: center;

@@ -839,6 +839,9 @@ const importTips = () => {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 4px;
+    // 右侧留出关闭按钮的位置，避免提示图标与关闭按钮挤在一起
+    padding: 0 28px;
     margin-bottom: 12px;
     .nut-icon {
       color: var(--comment-text-color);

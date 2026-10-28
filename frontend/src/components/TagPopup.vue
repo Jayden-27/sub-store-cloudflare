@@ -5,7 +5,7 @@
     pop-class="tag-popup"
     position="bottom"
     :style="{
-      height: `95%`,
+      maxHeight: '70vh',
       padding: '20px 12px 0 12px',
       backgroundColor: 'var(--background-color)',
     }"
@@ -255,6 +255,7 @@ defineExpose({ show, close });
   }
   .popup-main {
     padding: 0 10px;
+    overflow-y: auto;
     .tag-list {
       padding-top: 20px;
       display: flex;
