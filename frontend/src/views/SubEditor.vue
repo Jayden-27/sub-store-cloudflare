@@ -36,6 +36,7 @@
           :src="subIcon"
           fit="cover"
           show-loading
+          @click="showIconPopup"
         />
       </div>
       <!-- <div class="sticky-title-wrapper">
@@ -135,6 +136,8 @@
               :placeholder="$t(`editorPage.subConfig.basic.icon.placeholder`)"
               type="text"
               input-align="right"
+              left-icon="shop"
+              @click-left-icon="showIconPopup"
             />
         </nut-form-item>
         <!-- isIconColor -->
@@ -526,6 +529,10 @@
     :currentTag="currentTag"
     @setTag="setTagValue">
   </tag-popup>
+  <icon-popup
+    v-model:visible="iconPopupVisible"
+    @setIcon="setIcon">
+  </icon-popup>
 </template>
 
 <script lang="ts" setup>
@@ -564,6 +571,7 @@ import HandleDuplicate from "@/views/editor/components/HandleDuplicate.vue";
 import Regex from "@/views/editor/components/Regex.vue";
 import Sort from "@/views/editor/components/Sort.vue";
 import TagPopup from "@/components/TagPopup.vue";
+import IconPopup from "@/views/icon/IconPopup.vue";
 import DesktopPicker from "@/components/DesktopPicker.vue";
 import EditorGroupingTips from "@/components/EditorGroupingTips.vue";
 import { Dialog, Toast } from "@nutui/nutui";
@@ -758,6 +766,13 @@ type SubSelectRow = [string, string, string | undefined, string[] | undefined, b
   };
   const setTagValue = (tag: any) => {
     form.tag = tag;
+  };
+  const iconPopupVisible = ref(false);
+  const showIconPopup = () => {
+    iconPopupVisible.value = true;
+  };
+  const setIcon = (icon: any) => {
+    form.icon = icon?.url || "";
   };
 const selectedSubs = computed(() => {
   const subscriptions = form.subscriptions || [];

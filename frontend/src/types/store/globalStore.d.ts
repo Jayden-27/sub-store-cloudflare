@@ -14,6 +14,9 @@ interface GlobalStoreState {
   showFloatingRefreshButton: boolean;
   savedPositions: any;
   subProgressStyle: any;
+  defaultIconCollection: string;
+  defaultIconCollections: any[];
+  customIconCollections: any[];
 }
 
 interface ENV {
