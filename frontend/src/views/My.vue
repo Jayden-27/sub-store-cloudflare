@@ -23,7 +23,13 @@
             </p>
           </div>
         </div>
-        <div class="actions">
+      </div>
+    </section>
+
+    <section class="config-card storage-card">
+      <div class="title-wrapper">
+        <h1>{{ t("myPage.backup.title") }}</h1>
+        <div class="storage-actions">
           <input ref="fileInput" type="file" accept="application/json,.json" @change="restoreFromFile" />
           <nut-button plain type="primary" size="small" :loading="restoreIsLoading" @click="selectBackupFile">
             <font-awesome-icon v-if="!restoreIsLoading" icon="fa-solid fa-cloud-arrow-up" />
@@ -34,12 +40,6 @@
             {{ t("myPage.backup.export") }}
           </nut-button>
         </div>
-      </div>
-    </section>
-
-    <section class="config-card storage-card">
-      <div class="title-wrapper">
-        <h1>{{ t("myPage.backup.title") }}</h1>
       </div>
       <p class="card-desc">{{ t("myPage.backup.desc") }}</p>
     </section>
@@ -116,21 +116,29 @@
     <nut-popup v-model:visible="templateImportVisible" position="bottom" round closeable :style="{ height: '82vh' }">
       <div class="template-import-panel">
         <h2>{{ templateEditingId ? t("myPage.templates.editTitle") : t("myPage.templates.importTitle") }}</h2>
-        <nut-input class="input" v-model.trim="templateForm.id" :placeholder="t('myPage.templates.idPlaceholder')" input-align="left" :disabled="Boolean(templateEditingId)" />
-        <nut-input class="input" v-model.trim="templateForm.name" :placeholder="t('myPage.templates.namePlaceholder')" input-align="left" />
-        <nut-cell class="template-target-trigger" @click="openTemplateTargetPicker">
-          <view class="nut-cell__title">{{ t("myPage.templates.target") }}</view>
-          <view class="nut-cell__value">
+        <div class="template-form">
+          <div class="template-form__row">
+            <span class="template-form__label">{{ t("myPage.templates.idLabel") }}</span>
+            <span class="template-form__value is-muted">{{ templateForm.id || "—" }}</span>
+          </div>
+          <div class="template-form__row">
+            <span class="template-form__label">{{ t("myPage.templates.nameLabel") }}</span>
             <nut-input
-              :model-value="templateTargetLabel"
+              class="template-form__input"
+              v-model.trim="templateForm.name"
               :border="false"
-              readonly
+              :placeholder="t('myPage.templates.namePlaceholder')"
               input-align="right"
-              right-icon="rect-right"
-              @click-right-icon.stop="openTemplateTargetPicker"
             />
-          </view>
-        </nut-cell>
+          </div>
+          <div class="template-form__row is-clickable" @click="openTemplateTargetPicker">
+            <span class="template-form__label">{{ t("myPage.templates.target") }}</span>
+            <span class="template-form__value">
+              {{ templateTargetLabel }}
+              <nut-icon name="rect-right" size="12px" />
+            </span>
+          </div>
+        </div>
         <div class="template-content-editor">
           <CmView v-if="templateImportVisible" :is-read-only="false" :language="templateEditorLanguage" id="TemplateEditor" />
         </div>
@@ -470,7 +478,7 @@ onMounted(fetchTemplates);
 
   .avatar-wrapper {
     min-width: 0;
-    max-width: 64%;
+    max-width: 100%;
     display: flex;
     align-items: center;
 
@@ -504,34 +512,6 @@ onMounted(fetchTemplates);
     font-size: 12px;
     font-weight: normal;
     line-height: 1.45;
-  }
-
-  .actions {
-    margin-left: 12px;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-
-    input {
-      display: none;
-    }
-
-    svg {
-      margin-right: 4px;
-    }
-
-    .nut-button {
-      width: 116px;
-      padding: 0 10px;
-    }
-
-    .nut-button--plain {
-      background: transparent;
-    }
-
-    a {
-      margin-top: 12px;
-    }
   }
 }
 
@@ -611,6 +591,11 @@ onMounted(fetchTemplates);
   gap: 10px;
   color: var(--second-text-color);
 
+  // 仅编辑器参与高度收缩，表单与按钮保持自身高度
+  > *:not(.template-content-editor) {
+    flex: 0 0 auto;
+  }
+
   h2 {
     margin: 0 0 4px;
     font-size: 17px;
@@ -618,10 +603,61 @@ onMounted(fetchTemplates);
   }
 }
 
-.template-target-trigger {
-  box-shadow: none;
-  border-radius: var(--item-card-radios);
+.template-form {
   background: var(--card-color);
+  border-radius: var(--item-card-radios);
+  overflow: hidden;
+}
+
+.template-form__row {
+  min-height: 50px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+
+  & + & {
+    border-top: 1px solid var(--divider-color);
+  }
+
+  &.is-clickable {
+    cursor: pointer;
+  }
+}
+
+.template-form__label {
+  flex: 0 0 auto;
+  color: var(--second-text-color);
+}
+
+.template-form__value {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary-text-color);
+
+  &.is-muted {
+    color: var(--comment-text-color);
+  }
+}
+
+.template-form__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  background-color: transparent;
+
+  :deep(.nut-input__value),
+  :deep(.nut-input__value input) {
+    padding: 0;
+    background: transparent;
+    background-color: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
 }
 
 .template-content-editor {
@@ -722,17 +758,6 @@ onMounted(fetchTemplates);
   .profile-block {
     .info {
       align-items: flex-start;
-    }
-
-    .avatar-wrapper {
-      max-width: calc(100% - 132px);
-    }
-
-    .actions {
-      .nut-button {
-        width: 104px;
-        padding: 0 8px;
-      }
     }
   }
 
