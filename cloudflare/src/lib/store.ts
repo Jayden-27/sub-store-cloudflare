@@ -229,11 +229,12 @@ export async function upsertTemplate(env: SubStoreEnv, input: Partial<TemplateRe
   const id = toId(input.id || input.name || "template");
   if (BUILTIN_TEMPLATE_IDS.has(id)) throw new Error("Built-in templates cannot be modified");
   const existing = await getTemplate(env, id);
+  const target = normalizeTargetValue(input.target || existing?.target || "mihomo");
   const template: TemplateRecord = {
     id,
     name: stringValue(input.name, existing?.name || id),
-    target: normalizeTargetValue(input.target || existing?.target || "mihomo"),
-    config: parseConfig(input.config || existing?.config || DEFAULT_TEMPLATE_CONFIG),
+    target,
+    config: parseConfig(input.config || existing?.config || DEFAULT_TEMPLATE_CONFIG, target),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -406,7 +407,7 @@ function templateImportStatements(env: SubStoreEnv, templates: Partial<TemplateR
         id,
         stringValue(input.name, id),
         normalizeTargetValue(input.target),
-        JSON.stringify(parseConfig(input.config || DEFAULT_TEMPLATE_CONFIG)),
+        JSON.stringify(parseConfig(input.config || DEFAULT_TEMPLATE_CONFIG, normalizeTargetValue(input.target))),
         now + index,
         now,
       );
@@ -475,11 +476,12 @@ function collectionFromRow(row: CollectionRow): CollectionRecord {
 }
 
 function templateFromRow(row: TemplateRow): TemplateRecord {
+  const target = normalizeTargetValue(row.target);
   return {
     id: row.id,
     name: row.name,
-    target: normalizeTargetValue(row.target),
-    config: parseConfig(parseJson(row.config_json, DEFAULT_TEMPLATE_CONFIG)),
+    target,
+    config: parseConfig(parseJson(row.config_json, DEFAULT_TEMPLATE_CONFIG), target),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -561,16 +563,18 @@ function normalizeTemplateInput(input: unknown): Partial<TemplateRecord> | undef
   const template = input as Record<string, unknown>;
   const id = stringValue(template.id || template.name, "");
   if (!id || BUILTIN_TEMPLATE_IDS.has(id)) return undefined;
+  const target = normalizeTargetValue(template.target);
   return {
     id,
     name: stringValue(template.name, id),
-    target: normalizeTargetValue(template.target),
-    config: parseConfig(template.config || {}),
+    target,
+    config: parseConfig(template.config || {}, target),
   };
 }
 
-function parseConfig(value: unknown) {
-  return value && typeof value === "object" ? normalizeMihomoTemplateConfig(value as JsonObject) : BUILTIN_TEMPLATES[0].config;
+function parseConfig(value: unknown, target: SubscriptionTarget = "mihomo") {
+  if (!value || typeof value !== "object") return BUILTIN_TEMPLATES[0].config;
+  return target === "sing-box" ? { ...(value as JsonObject) } : normalizeMihomoTemplateConfig(value as JsonObject);
 }
 
 function normalizeMihomoTemplateConfig(input: JsonObject) {

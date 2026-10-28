@@ -125,7 +125,7 @@ export async function convertSubscriptionContent(input: {
     sourceId: "one-shot",
   }));
   const supported = processed.filter((proxy) => isTargetCompatible(proxy, input.target));
-  const output = renderTarget(supported, input.target, input.template?.config);
+  const output = renderTarget(supported, input.target, input.template);
   return {
     content: output,
     parsed: parsed.length,
@@ -1660,23 +1660,32 @@ function toSurfboardProxyLine(proxy: ProxyNode) {
     : undefined;
 }
 
-function renderTarget(proxies: ProxyNode[], target: SubscriptionTarget, template?: RoutingTemplateConfig) {
+function templateConfigForTarget(target: SubscriptionTarget, template?: RoutingTemplate) {
+  if (!template) return undefined;
+  // 模板只作用于自己的目标客户端，避免把 mihomo 模板套到 sing-box（或反之）
+  if (target === "sing-box") return template.target === "sing-box" ? template.config : undefined;
+  return template.target === "sing-box" ? undefined : template.config;
+}
+
+function renderTarget(proxies: ProxyNode[], target: SubscriptionTarget, template?: RoutingTemplate) {
   if (proxies.length === 0) throw new Error(`No supported nodes for ${target} output`);
-  if (target === "mihomo" || target === "stash") return renderMihomoYaml(proxies, new URL("https://sub-store.local/convert"), template);
+  const templateConfig = templateConfigForTarget(target, template);
+  if (target === "mihomo" || target === "stash") return renderMihomoYaml(proxies, new URL("https://sub-store.local/convert"), templateConfig);
   if (target === "surge") return renderSurgeProxies(proxies);
   if (target === "surge-mac") return renderSurgeMacProxies(proxies);
   if (target === "surfboard") return renderSurfboardProxies(proxies);
   if (target === "loon") return renderLoonProxies(proxies);
   if (target === "egern") return renderEgernYaml(proxies);
   if (target === "qx") return renderQxProxies(proxies);
-  if (target === "sing-box") return renderSingBoxJson(proxies);
+  if (target === "sing-box") return renderSingBoxJson(proxies, templateConfig);
   if (target === "v2ray") return base64Utf8(renderProxyUris(proxies));
   if (target === "uri" || target === "shadowrocket") return renderProxyUris(proxies);
   return JSON.stringify({ proxies }, null, 2);
 }
 
 function renderBuildTarget(proxies: ProxyNode[], options: BuildOptions) {
-  if (options.target === "mihomo" || options.target === "stash") return renderMihomoYaml(proxies, options.requestUrl, options.template?.config);
+  const templateConfig = templateConfigForTarget(options.target, options.template);
+  if (options.target === "mihomo" || options.target === "stash") return renderMihomoYaml(proxies, options.requestUrl, templateConfig);
   if (options.target === "surge") return renderSurgeProxies(proxies);
   if (options.target === "surge-mac") return renderSurgeMacProxies(proxies);
   if (options.target === "surfboard") return renderSurfboardProxies(proxies);
@@ -1684,11 +1693,11 @@ function renderBuildTarget(proxies: ProxyNode[], options: BuildOptions) {
   if (options.target === "egern") return renderEgernYaml(proxies);
   if (options.target === "shadowrocket") return renderProxyUris(proxies);
   if (options.target === "qx") return renderQxProxies(proxies);
-  if (options.target === "sing-box") return renderSingBoxJson(proxies);
+  if (options.target === "sing-box") return renderSingBoxJson(proxies, templateConfig);
   if (options.target === "v2ray") return base64Utf8(renderProxyUris(proxies));
   if (options.target === "uri") return renderProxyUris(proxies);
   if (options.target === "json") return JSON.stringify({ proxies }, null, 2);
-  return renderMihomoYaml(proxies, options.requestUrl, options.template?.config);
+  return renderMihomoYaml(proxies, options.requestUrl, templateConfig);
 }
 
 function selectResponseMetadata(options: InternalBuildOptions) {
@@ -2014,7 +2023,7 @@ function formatAlpn(value: unknown) {
   return stringSetting(value);
 }
 
-function renderSingBoxJson(proxies: ProxyNode[]) {
+function renderSingBoxJson(proxies: ProxyNode[], template?: RoutingTemplateConfig) {
   const nodeOutbounds = proxies.map(toSingBoxOutbound).filter(isSingBoxOutbound);
   const tags = nodeOutbounds.map((outbound) => String(outbound.tag));
   if (tags.length === 0) throw new Error("No supported nodes for sing-box output");
@@ -2041,16 +2050,50 @@ function renderSingBoxJson(proxies: ProxyNode[]) {
     { type: "block", tag: "REJECT" },
   ];
 
-  return JSON.stringify(
-    {
-      log: { level: "info" },
-      inbounds: [{ type: "mixed", tag: "mixed-in", listen: "127.0.0.1", listen_port: 7890, sniff: true }],
-      outbounds,
-      route: { auto_detect_interface: true, final: "PROXY" },
-    },
-    null,
-    2,
-  );
+  const base: Record<string, unknown> = {
+    log: { level: "info" },
+    inbounds: [{ type: "mixed", tag: "mixed-in", listen: "127.0.0.1", listen_port: 7890, sniff: true }],
+    outbounds,
+    route: { auto_detect_interface: true, final: "PROXY" },
+  };
+
+  return JSON.stringify(mergeSingBoxTemplate(base, template), null, 2);
+}
+
+function mergeSingBoxTemplate(base: Record<string, unknown>, template?: RoutingTemplateConfig) {
+  if (!template || Object.keys(template).length === 0) return base;
+
+  const merged = deepMergeJson(base, template) as Record<string, unknown>;
+  const templateOutbounds = Array.isArray(template.outbounds)
+    ? template.outbounds.filter(
+        (item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+
+  // 节点出站由订阅动态生成，模板只允许增补/覆盖同名出站，不能把它们整体替换掉
+  if (templateOutbounds.length === 0) {
+    merged.outbounds = base.outbounds;
+  } else {
+    const templateTags = new Set(templateOutbounds.map((item) => String(item.tag ?? "")).filter(Boolean));
+    const baseOutbounds = Array.isArray(base.outbounds) ? (base.outbounds as Record<string, unknown>[]) : [];
+    merged.outbounds = [...templateOutbounds, ...baseOutbounds.filter((item) => !templateTags.has(String(item.tag ?? "")))];
+  }
+
+  return merged;
+}
+
+function deepMergeJson(base: unknown, override: unknown): unknown {
+  if (Array.isArray(override)) return override;
+  if (!override || typeof override !== "object") return override;
+  const result: Record<string, unknown> = base && typeof base === "object" && !Array.isArray(base)
+    ? { ...(base as Record<string, unknown>) }
+    : {};
+  for (const [key, value] of Object.entries(override as Record<string, unknown>)) {
+    result[key] = value && typeof value === "object" && !Array.isArray(value)
+      ? deepMergeJson(result[key], value)
+      : value;
+  }
+  return result;
 }
 
 function toSingBoxOutbound(proxy: ProxyNode): SingBoxOutbound | undefined {

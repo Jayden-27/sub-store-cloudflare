@@ -350,8 +350,12 @@ const openTemplateEdit = (template: any) => {
   templateForm.id = template.name;
   templateForm.name = template.displayName || template.name;
   templateForm.target = template.target || "mihomo";
-  templateEditorLanguage.value = "yaml";
-  cmStore.setEditCode(TEMPLATE_EDITOR_ID, toYaml(template.config || {}));
+  const isSingBox = templateForm.target === "sing-box";
+  templateEditorLanguage.value = isSingBox ? "json" : "yaml";
+  cmStore.setEditCode(
+    TEMPLATE_EDITOR_ID,
+    isSingBox ? JSON.stringify(template.config || {}, null, 2) : toYaml(template.config || {}),
+  );
   templateImportVisible.value = true;
 };
 
@@ -380,6 +384,7 @@ const openTemplateTargetPicker = () => {
 const handleTemplateTargetConfirm = ({ selectedValue }) => {
   templateForm.target = selectedValue?.[0] || "mihomo";
   selectedTemplateTargetValue.value = [templateForm.target];
+  templateEditorLanguage.value = templateForm.target === "sing-box" ? "json" : "yaml";
   templateTargetPickerVisible.value = false;
 };
 
@@ -683,9 +688,15 @@ onMounted(fetchTemplates);
 .template-form__input {
   flex: 1;
   min-width: 0;
-  padding: 0;
-  background: transparent;
-  background-color: transparent;
+  min-height: 34px;
+  padding: 0 10px;
+  background: var(--background-color);
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+
+  &:focus-within {
+    box-shadow: 0 0 0 1px var(--primary-color) inset;
+  }
 
   :deep(.nut-input__value),
   :deep(.nut-input__value input) {
@@ -796,9 +807,15 @@ onMounted(fetchTemplates);
   .setting-input {
     flex: 1;
     min-width: 0;
-    padding: 0;
-    background: transparent;
-    background-color: transparent;
+    min-height: 34px;
+    padding: 0 10px;
+    background: var(--background-color);
+    border-radius: 8px;
+    transition: box-shadow 0.2s ease;
+
+    &:focus-within {
+      box-shadow: 0 0 0 1px var(--primary-color) inset;
+    }
 
     :deep(.nut-input__value),
     :deep(.nut-input__value input) {

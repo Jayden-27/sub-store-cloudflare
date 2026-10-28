@@ -24,7 +24,7 @@ Sub-Store Cloudflare 是一个云端订阅配置器，不是完整 Sub-Store 的
 - 单订阅源和组合订阅。
 - 常用节点过滤、重命名、正则删除、去重、排序、旗帜处理、域名解析和常用属性设置。
 - 随 Worker 编译的 JavaScript Filter / Operator；内置脚本经过免费版验证，个人脚本需要重新部署。
-- Mihomo / Stash 规则模板，以及可导入的自定义模板。
+- Mihomo / Stash / sing-box 规则模板，以及可导入的自定义模板。
 - 原始节点和处理后节点预览，本地节点格式校验。
 - Mihomo、Stash、Surge、Surfboard、Loon、Egern、Shadowrocket、Quantumult X、sing-box、v2ray、URI 和 JSON 输出。
 - 部署级下载 token、独立限时下载授权、管理端 token、配置备份与恢复。

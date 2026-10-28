@@ -214,4 +214,79 @@ describe("subscription parsing and limits", () => {
     const response = new Response("small", { headers: { "content-length": "999" } });
     await expect(readResponseText(response, 10, "Test response")).rejects.toThrow("10 byte limit");
   });
+
+  it("merges sing-box templates and keeps generated node outbounds", async () => {
+    const output = await buildSubscription({
+      source: {
+        id: "sb-source",
+        name: "SB Source",
+        type: "local",
+        url: "",
+        content: "trojan://password@example.com:443?sni=example.com#Node%20A",
+      },
+      sources: [],
+      requestUrl: new URL("https://example.com/download/source/sb-source/sing-box"),
+      target: "sing-box",
+      template: {
+        id: "sb-template",
+        name: "SB Template",
+        target: "sing-box",
+        config: {
+          dns: { servers: [{ tag: "dns-remote", address: "https://1.1.1.1/dns-query" }] },
+          outbounds: [{ type: "selector", tag: "PROXY", outbounds: ["Node A", "DIRECT"], default: "Node A" }],
+          route: { final: "PROXY", rules: [{ action: "sniff" }] },
+        },
+      },
+    });
+    const parsed = JSON.parse(output);
+    expect(parsed.dns.servers[0].tag).toBe("dns-remote");
+    expect(parsed.route.rules).toHaveLength(1);
+    expect(parsed.outbounds.find((item: any) => item.tag === "PROXY").outbounds).toEqual(["Node A", "DIRECT"]);
+    const tags = parsed.outbounds.map((item: any) => item.tag);
+    expect(tags).toContain("Node A");
+    expect(tags).toContain("AUTO");
+    expect(tags).toContain("DIRECT");
+    expect(tags).toContain("REJECT");
+  });
+
+  it("keeps templates isolated by target", async () => {
+    const source = {
+      id: "iso-source",
+      name: "Iso Source",
+      type: "local" as const,
+      url: "",
+      content: "trojan://password@example.com:443?sni=example.com#Iso%20Node",
+    };
+    const singBoxTemplate = {
+      id: "sb-iso",
+      name: "SB Iso",
+      target: "sing-box" as const,
+      config: { dns: { servers: [{ tag: "dns-remote", address: "https://1.1.1.1/dns-query" }] } },
+    };
+    const mihomoTemplate = {
+      id: "mihomo-iso",
+      name: "Mihomo Iso",
+      target: "mihomo" as const,
+      config: { rules: ["MATCH,DIRECT"] },
+    };
+
+    const singBoxOutput = await buildSubscription({
+      source,
+      sources: [],
+      requestUrl: new URL("https://example.com/download/source/iso-source/sing-box"),
+      target: "sing-box",
+      template: mihomoTemplate,
+    });
+    expect(JSON.parse(singBoxOutput).dns).toBeUndefined();
+
+    const mihomoOutput = await buildSubscription({
+      source,
+      sources: [],
+      requestUrl: new URL("https://example.com/download/source/iso-source/mihomo"),
+      target: "mihomo",
+      template: singBoxTemplate,
+    });
+    expect(mihomoOutput).not.toContain("dns-remote");
+    expect(mihomoOutput).not.toContain("outbounds");
+  });
 });

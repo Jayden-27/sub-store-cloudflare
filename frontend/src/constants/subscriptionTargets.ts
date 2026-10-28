@@ -26,7 +26,7 @@ export type DownloadTarget =
   | 'uri'
   | 'json';
 
-export type TemplateTarget = 'mihomo' | 'stash';
+export type TemplateTarget = 'mihomo' | 'stash' | 'sing-box';
 
 export type SubscriptionTargetOption<T extends string = string> = {
   value: T;
@@ -53,6 +53,7 @@ export const DOWNLOAD_TARGET_OPTIONS: SubscriptionTargetOption<DownloadTarget>[]
 export const TEMPLATE_TARGET_OPTIONS: SubscriptionTargetOption<TemplateTarget>[] = [
   { value: 'mihomo', label: 'Mihomo' },
   { value: 'stash', label: 'Stash' },
+  { value: 'sing-box', label: 'sing-box' },
 ];
 
 export const getTargetLabel = (value?: string) => {

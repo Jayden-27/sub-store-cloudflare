@@ -562,11 +562,12 @@ function toApiTemplate(template: TemplateRecord) {
 }
 
 function fromApiTemplate(input: JsonMap): Partial<TemplateRecord> {
+  const target = normalizeTargetValue(input.target);
   return {
     id: stringValue(input.id || input.name),
     name: stringValue(input.name || input.id),
-    target: normalizeTargetValue(input.target),
-    config: parseTemplateConfig(input.config ?? input.content),
+    target,
+    config: parseTemplateConfig(input.config ?? input.content, target),
   };
 }
 
@@ -706,12 +707,13 @@ async function parseJsonOrText(c: ApiContext) {
   }
 }
 
-function parseTemplateConfig(input: unknown) {
-  if (input && typeof input === "object" && !Array.isArray(input)) return normalizeMihomoTemplateConfig(input as JsonMap);
+function parseTemplateConfig(input: unknown, target: SubscriptionTarget = "mihomo") {
+  const normalize = (value: JsonMap) => (target === "sing-box" ? { ...value } : normalizeMihomoTemplateConfig(value));
+  if (input && typeof input === "object" && !Array.isArray(input)) return normalize(input as JsonMap);
   if (typeof input !== "string" || !input.trim()) throw new Error("Template config is required");
   try {
     const parsed = input.trim().startsWith("{") ? JSON.parse(input) : parseYaml(input);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return normalizeMihomoTemplateConfig(parsed as JsonMap);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return normalize(parsed as JsonMap);
   } catch {
     throw new Error("Template config must be valid JSON or YAML");
   }
