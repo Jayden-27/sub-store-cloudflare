@@ -14,6 +14,7 @@
     "@codemirror/autocomplete": "^6.12.0",
     "@codemirror/commands": "^6.3.3",
     "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-yaml": "^6.1.3",
     "@codemirror/language": "^6.10.1",
     "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.4.0",
@@ -38,7 +39,8 @@
     "vue-i18n": "^9.14.5",
     "vue-router": "^4.6.4",
     "vue3-toastify": "^0.2.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

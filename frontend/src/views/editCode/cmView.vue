@@ -5,7 +5,7 @@
       :class="{ 'nodark-imgbutton': !isDarkModeEnabled }"
     >
       <div v-if="openPanel">
-        <button @click="hiCode"><img :src="jsimg" /></button>
+        <button v-if="!isYamlEditor" @click="hiCode"><img :src="jsimg" /></button>
         <button @click="undoCode"><img :src="undoimg" /></button>
         <button @click="redoCode"><img :src="redoimg" /></button>
         <button v-if="isJS" @click="formatCode"><img :src="format" /></button>
@@ -39,7 +39,8 @@
 import { darkCode } from "./dark.js";
 import { lightCode } from "./light.js";
 import { javascript } from "@codemirror/lang-javascript";
-import { ref, onMounted, watch, watchEffect } from "vue";
+import { yaml as yamlLang } from "@codemirror/lang-yaml";
+import { computed, ref, onMounted, watch, watchEffect } from "vue";
 
 import {
   highlightSelectionMatches,
@@ -91,7 +92,8 @@ const { theme } = storeToRefs(settingsStore);
 const isDarkModeEnabled = ref(true);
 
 const Length = ref("");
-const props = defineProps(["isReadOnly", "id"]);
+const props = defineProps(["isReadOnly", "id", "language"]);
+const isYamlEditor = computed(() => props.language === "yaml");
 const cmStore = useCodeStore();
 const isJS = ref(false);
 const viewRef = ref(null);
@@ -110,7 +112,7 @@ const CreateView = () => {
           ...defaultKeymap, // 注释 缩进 等等
           ...historyKeymap,
         ]),
-        langs.of([]),
+        langs.of(props.language === "yaml" ? yamlLang() : []),
         editorTheme.of(isDarkModeEnabled.value ? darkCode : lightCode), // 设置初始主题
         EditorState.readOnly.of(props.isReadOnly ? true : false),
         EditorView.lineWrapping, // 换行
@@ -151,7 +153,7 @@ const CreateView = () => {
             insert: newValue,
           },
         });
-        getjsjson(newValue);
+        if (props.language !== "yaml") getjsjson(newValue);
       }
     }
   );
@@ -230,6 +232,8 @@ watchEffect(() => {
 
 onMounted(() => {
   CreateView();
+  Length.value = formatLength((cmStore.EditCode[props.id] || "").length);
+  if (props.language === "yaml") return;
   let lg = localStorage.getItem("highlightJS");
   const x = getjsjson(cmStore.EditCode[props.id]);
   if (!x) {

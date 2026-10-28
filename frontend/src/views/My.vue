@@ -132,7 +132,7 @@
           </view>
         </nut-cell>
         <div class="template-content-editor">
-          <CmView v-if="templateImportVisible" :is-read-only="false" id="TemplateEditor" />
+          <CmView v-if="templateImportVisible" :is-read-only="false" :language="templateEditorLanguage" id="TemplateEditor" />
         </div>
         <nut-button block type="primary" :loading="templateImporting" @click="saveTemplate">
           {{ t("myPage.templates.save") }}
@@ -165,6 +165,7 @@ import { useAppNotifyStore } from "@/store/appNotify";
 import { useCodeStore } from "@/store/codeStore";
 import { useSettingsStore } from "@/store/settings";
 import { TEMPLATE_TARGET_OPTIONS, getTargetLabel } from "@/constants/subscriptionTargets";
+import { stringify as toYaml } from "yaml";
 
 const CmView = defineAsyncComponent(() => import("@/views/editCode/cmView.vue"));
 
@@ -187,6 +188,7 @@ const templateImporting = ref(false);
 const templateImportVisible = ref(false);
 const templateEditingId = ref("");
 const templateTargetPickerVisible = ref(false);
+const templateEditorLanguage = ref<"yaml" | "json">("yaml");
 const templates = ref<any[]>([]);
 
 const requestForm = reactive({
@@ -294,6 +296,7 @@ const openTemplateImport = () => {
   templateForm.id = "";
   templateForm.name = "";
   templateForm.target = "mihomo";
+  templateEditorLanguage.value = "yaml";
   cmStore.setEditCode(TEMPLATE_EDITOR_ID, "");
   templateImportVisible.value = true;
 };
@@ -303,7 +306,8 @@ const openTemplateEdit = (template: any) => {
   templateForm.id = template.name;
   templateForm.name = template.displayName || template.name;
   templateForm.target = template.target || "mihomo";
-  cmStore.setEditCode(TEMPLATE_EDITOR_ID, JSON.stringify(template.config || {}, null, 2));
+  templateEditorLanguage.value = "yaml";
+  cmStore.setEditCode(TEMPLATE_EDITOR_ID, toYaml(template.config || {}));
   templateImportVisible.value = true;
 };
 
@@ -317,7 +321,9 @@ const importTemplateFromFile = async (event: Event) => {
   templateForm.id = file.name.replace(/\.(json|ya?ml)$/i, "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
   templateForm.name = file.name.replace(/\.(json|ya?ml)$/i, "");
   templateForm.target = "mihomo";
-  cmStore.setEditCode(TEMPLATE_EDITOR_ID, await file.text());
+  const content = await file.text();
+  templateEditorLanguage.value = /^[{[]/.test(content.trim()) ? "json" : "yaml";
+  cmStore.setEditCode(TEMPLATE_EDITOR_ID, content);
   templateImportVisible.value = true;
 };
 
@@ -597,6 +603,8 @@ onMounted(fetchTemplates);
 
 .template-import-panel {
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
@@ -613,23 +621,40 @@ onMounted(fetchTemplates);
 .template-target-trigger {
   box-shadow: none;
   border-radius: var(--item-card-radios);
-  background: var(--background-color);
+  background: var(--card-color);
 }
 
 .template-content-editor {
-  flex: 1;
-  min-height: 220px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--divider-color);
   border-radius: var(--item-card-radios);
   background: var(--background-color);
-  overflow: auto;
+  overflow: hidden;
 
+  // 编辑器填满弹层剩余高度并内部滚动，避免内容溢出到弹层外
   :deep(.cmviewRef) {
-    min-height: 220px;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  :deep(.cmviewRef > div:nth-of-type(2)) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
   }
 
   :deep(.cm-editor) {
-    min-height: 220px;
+    height: 100%;
+  }
+
+  :deep(.cm-scroller) {
+    overflow: auto;
   }
 }
 
