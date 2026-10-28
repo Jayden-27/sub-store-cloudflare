@@ -786,6 +786,8 @@ export default {
     loading: "Generating node comparison...",
     subscriptionPreviewCopyLabel: "Click to copy the subscription link:",
     subscriptionPreviewLoadFailed: "Load failed: {e}",
+    previewEmpty: "No preview content. Open it from a subscription or collection action menu.",
+    previewBack: "Back to subscriptions",
     subscriptionPreviewCopied: "Copied link: {url}",
     remain: {
       title: "remain nodes",

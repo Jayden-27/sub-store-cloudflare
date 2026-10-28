@@ -134,6 +134,7 @@
               class="nut-input-text"
               v-model.trim="form.icon"
               :placeholder="$t(`editorPage.subConfig.basic.icon.placeholder`)"
+              :title="form.icon || ''"
               type="text"
               input-align="right"
               left-icon="shop"

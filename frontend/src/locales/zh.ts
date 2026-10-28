@@ -786,6 +786,8 @@ export default {
     loading: "生成节点对比中...",
     subscriptionPreviewCopyLabel: "点击复制订阅链接:",
     subscriptionPreviewLoadFailed: "加载失败: {e}",
+    previewEmpty: "暂无预览内容，请从订阅或组合的操作菜单打开预览",
+    previewBack: "返回订阅列表",
     subscriptionPreviewCopied: "已复制链接: {url}",
     remain: {
       title: "保留的节点",

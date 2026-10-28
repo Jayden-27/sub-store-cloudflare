@@ -27,7 +27,11 @@
           <div class="btn-groups preview-trailing" />
         </template>
       </header>
-      <cmView :isReadOnly="false" id="subscriptionPreview" />
+      <div v-if="!url && !previewCode.trim()" class="preview-empty">
+        <p>{{ t('comparePage.previewEmpty') }}</p>
+        <router-link class="preview-empty-link" to="/subs">{{ t('comparePage.previewBack') }}</router-link>
+      </div>
+      <cmView v-else :isReadOnly="false" id="subscriptionPreview" />
     </div>
   </Teleport>
 </template>
@@ -42,6 +46,7 @@ import { useAppNotifyStore } from "@/store/appNotify";
 import cmView from "@/views/editCode/cmView.vue";
 import { useCodeStore } from "@/store/codeStore";
 import { useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 
 const cmStore = useCodeStore();
 const { copy, isSupported } = useClipboard();
@@ -51,7 +56,9 @@ const { showNotify } = useAppNotifyStore();
 const { t } = useI18n();
 
 const route = useRoute();
+const router = useRouter();
 const { url } = route.query as { url: string };
+const previewCode = computed(() => cmStore.EditCode['subscriptionPreview'] || '');
 
 watchEffect(async () => {
   if (url) {
@@ -106,6 +113,10 @@ watch(() => props.previewData?.processed, (val) => {
 
  
 const clickClose = () => {
+  if (!url) {
+    router.push("/subs");
+    return;
+  }
   emit("closePreview");
 };
 const copyUrl = async () => {
@@ -294,6 +305,22 @@ const copyUrl = async () => {
   background: var(--background-color);
   .cmviewRef {
     width: 100%;
+  }
+  .preview-empty {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--comment-text-color);
+    font-size: 14px;
+
+    .preview-empty-link {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
   }
   @media screen and (min-width: 768px) {
     .compare-page-header,
