@@ -249,6 +249,39 @@ describe("subscription parsing and limits", () => {
     expect(tags).toContain("REJECT");
   });
 
+  it("keeps extra template keys and include-all groups in mihomo output", async () => {
+    const output = await buildSubscription({
+      source: {
+        id: "pass-source",
+        name: "Pass Source",
+        type: "local",
+        url: "",
+        content: "trojan://password@example.com:443?sni=example.com#Pass%20Node",
+      },
+      sources: [],
+      requestUrl: new URL("https://example.com/download/source/pass-source/mihomo"),
+      target: "mihomo",
+      template: {
+        id: "pass-template",
+        name: "Pass Template",
+        target: "mihomo",
+        config: {
+          ipv6: true,
+          tun: { enable: false, stack: "system" },
+          ntp: { enable: true, server: "time.apple.com" },
+          dns: { enable: true, nameserver: ["223.5.5.5"] },
+          "proxy-groups": [{ name: "节点选择", type: "select", "include-all": true }],
+          rules: ["MATCH,DIRECT"],
+        },
+      },
+    });
+    expect(output).toContain("ipv6: true");
+    expect(output).toContain("tun:");
+    expect(output).toContain("ntp:");
+    expect(output).toContain("include-all: true");
+    expect(output).toContain("MATCH,DIRECT");
+  });
+
   it("keeps templates isolated by target", async () => {
     const source = {
       id: "iso-source",
