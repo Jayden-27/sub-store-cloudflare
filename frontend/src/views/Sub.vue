@@ -378,15 +378,18 @@ const tags = computed(() => {
 
   let tags: any[] = Array.from(set);
   if(tags.length === 0 && !hasRemote.value && !hasLocal.value) return [];
-  tags = tags.map(i => ({ label: i, value: i }));
-  
+  // 用户 tag 加前缀，避免与内置筛选值 all/remote/local/untagged 冲突
+  tags = tags.map(i => ({ label: i, value: `tag:${i}` }));
+
   const result = [{ label: t("specificWord.all"), value: "all" }, ...tags];
   if(hasRemote.value) result.push({ label: t("editorPage.subConfig.basic.source.remote"), value: "remote" });
   if(hasLocal.value) result.push({ label: t("editorPage.subConfig.basic.source.local"), value: "local" });
   if(tags.length > 0 && hasUntagged.value) result.push({ label: t("specificWord.untagged"), value: "untagged" });
 
   if (!result.find(i => i.value === tag.value)) {
-    tag.value = 'all';
+    // 兼容旧版本存在本地的裸 tag 值
+    const legacy = result.find(i => i.value === `tag:${tag.value}`);
+    tag.value = legacy ? legacy.value : 'all';
   }
   return result;
 });
@@ -567,6 +570,7 @@ const shouldShowElementByTag = (element) => {
   if(tag.value === 'untagged') return !Array.isArray(element.tag) || element.tag.length === 0;
   if(tag.value === 'remote') return element.source === 'remote';
   if(tag.value === 'local') return element.source === 'local';
+  if(tag.value.startsWith('tag:')) return element.tag?.includes(tag.value.slice(4));
   return element.tag?.includes(tag.value);
 };
 const shouldShowElement = (element) => {
