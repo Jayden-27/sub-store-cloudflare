@@ -3,7 +3,7 @@
   <h1>Sub-Store Cloudflare</h1>
   <p>Aggregate subscriptions, process proxy nodes, and generate client configs on Cloudflare Workers.</p>
 
-  [![Release](https://img.shields.io/github/v/release/Jayden-27/sub-store-cloudflare?include_prereleases&sort=semver)](https://github.com/Jayden-27/sub-store-cloudflare/releases)
+  [![Version](https://img.shields.io/github/v/tag/Jayden-27/sub-store-cloudflare?sort=semver)](https://github.com/Jayden-27/sub-store-cloudflare/tags)
   [![License: AGPL-3.0](https://img.shields.io/github/license/Jayden-27/sub-store-cloudflare)](LICENSE)
   [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
   [![D1](https://img.shields.io/badge/Storage-D1-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/d1/)
