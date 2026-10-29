@@ -222,7 +222,10 @@ apiRoutes.post("/templates", async (c) => {
   try {
     const input = await parseJsonOrText(c) as JsonMap;
     if (!stringValue(input.name || input.id)) return failed(c, "Template name is required");
-    return success(c, toApiTemplate(await upsertTemplate(c.env, fromApiTemplate(input))));
+    const template = fromApiTemplate(input);
+    const configError = validateTemplateConfig(template.target, template.config);
+    if (configError) return failed(c, configError, 400);
+    return success(c, toApiTemplate(await upsertTemplate(c.env, template)));
   } catch (error) {
     return failed(c, error instanceof Error ? error.message : String(error), 400);
   }
@@ -236,7 +239,10 @@ apiRoutes.patch("/templates/:name", async (c) => {
   try {
     const existing = await getTemplate(c.env, c.req.param("name"));
     if (!existing) return failed(c, "Template not found", 404);
-    return success(c, toApiTemplate(await upsertTemplate(c.env, { ...fromApiTemplate(await parseJsonOrText(c) as JsonMap), id: existing.id })));
+    const template = { ...fromApiTemplate(await parseJsonOrText(c) as JsonMap), id: existing.id };
+    const configError = validateTemplateConfig(template.target, template.config);
+    if (configError) return failed(c, configError, 400);
+    return success(c, toApiTemplate(await upsertTemplate(c.env, template)));
   } catch (error) {
     return failed(c, error instanceof Error ? error.message : String(error), 400);
   }
@@ -246,6 +252,10 @@ apiRoutes.delete("/templates/:name", async (c) => {
     const existing = await getTemplate(c.env, c.req.param("name"));
     if (!existing) return failed(c, "Template not found", 404);
     if (BUILTIN_TEMPLATE_IDS.has(existing.id)) return failed(c, "Built-in templates cannot be deleted", 400);
+    const references = (await listCollections(c.env))
+      .filter((collection) => collection.templateId === existing.id)
+      .map((collection) => collection.id);
+    if (references.length > 0) return failed(c, `Template is used by collections: ${references.join(", ")}`, 409);
     await archiveAndDeleteResource(
       c.env,
       "template",
@@ -559,6 +569,20 @@ function toApiTemplate(template: TemplateRecord) {
     config: template.config,
     readonly: BUILTIN_TEMPLATE_IDS.has(template.id),
   };
+}
+
+function validateTemplateConfig(target: SubscriptionTarget | undefined, config: unknown) {
+  if (target !== "sing-box") return undefined;
+  if (!config || typeof config !== "object" || Array.isArray(config)) return "sing-box template config must be an object";
+  const value = config as Record<string, unknown>;
+  if (value.outbounds !== undefined && !Array.isArray(value.outbounds)) return "sing-box template outbounds must be an array";
+  if (value.inbounds !== undefined && !Array.isArray(value.inbounds)) return "sing-box template inbounds must be an array";
+  if (value.route !== undefined && (!value.route || typeof value.route !== "object" || Array.isArray(value.route))) {
+    return "sing-box template route must be an object";
+  }
+  const route = value.route as Record<string, unknown> | undefined;
+  if (route?.rules !== undefined && !Array.isArray(route.rules)) return "sing-box template route.rules must be an array";
+  return undefined;
 }
 
 function fromApiTemplate(input: JsonMap): Partial<TemplateRecord> {

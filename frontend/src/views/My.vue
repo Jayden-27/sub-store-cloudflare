@@ -89,7 +89,7 @@
               <font-awesome-icon icon="fa-solid fa-ban" />
               {{ t("myPage.btn.cancel") }}
             </nut-button>
-            <nut-button class="save-btn" type="primary" size="mini" :loading="requestSaving" @click.stop="saveRequestSettings">
+            <nut-button class="save-btn" type="primary" size="mini" :loading="requestSaving" :disabled="!isRequestValid" @click.stop="saveRequestSettings">
               <font-awesome-icon v-if="!requestSaving" icon="fa-solid fa-floppy-disk" />
               {{ t("myPage.btn.save") }}
             </nut-button>
@@ -110,22 +110,27 @@
           <span class="setting-label">{{ t('myPage.request.defaultTimeout') }}</span>
           <nut-input class="setting-input" v-model="requestForm.defaultTimeout" type="number" input-align="right" />
         </div>
+        <p v-if="requestFieldErrors.defaultTimeout" class="setting-error" role="alert">{{ requestFieldErrors.defaultTimeout }}</p>
         <div class="setting-row">
           <span class="setting-label">{{ t('myPage.request.backendRequestConcurrency') }}</span>
           <nut-input class="setting-input" v-model="requestForm.backendRequestConcurrency" type="number" input-align="right" />
         </div>
+        <p v-if="requestFieldErrors.backendRequestConcurrency" class="setting-error" role="alert">{{ requestFieldErrors.backendRequestConcurrency }}</p>
         <div class="setting-row">
           <span class="setting-label">{{ t('myPage.request.backendRequestConcurrencyWaitTime') }}</span>
           <nut-input class="setting-input" v-model="requestForm.backendRequestConcurrencyWaitTime" type="number" input-align="right" />
         </div>
+        <p v-if="requestFieldErrors.backendRequestConcurrencyWaitTime" class="setting-error" role="alert">{{ requestFieldErrors.backendRequestConcurrencyWaitTime }}</p>
         <div class="setting-row">
           <span class="setting-label">{{ t('myPage.request.remoteCacheTtl') }}</span>
           <nut-input class="setting-input" v-model="requestForm.remoteCacheTtl" type="number" input-align="right" />
         </div>
+        <p v-if="requestFieldErrors.remoteCacheTtl" class="setting-error" role="alert">{{ requestFieldErrors.remoteCacheTtl }}</p>
         <div class="setting-row">
           <span class="setting-label">{{ t('myPage.request.nodeInfoApiUrl') }}</span>
           <nut-input class="setting-input" v-model="requestForm.nodeInfoApiUrl" type="text" input-align="right" />
         </div>
+        <p v-if="requestFieldErrors.nodeInfoApiUrl" class="setting-error" role="alert">{{ requestFieldErrors.nodeInfoApiUrl }}</p>
         <label class="boolean-setting">
           <input v-model="requestForm.remoteCacheStaleOnError" type="checkbox" />
           {{ t('myPage.request.remoteCacheStaleOnError') }}
@@ -134,7 +139,15 @@
       <p v-else class="card-desc">{{ requestSummary }}</p>
     </section>
 
-    <nut-popup v-model:visible="templateImportVisible" position="bottom" round closeable :style="{ height: '82vh' }">
+    <nut-popup
+      :visible="templateImportVisible"
+      :position="isWideScreen ? 'center' : 'bottom'"
+      :style="templatePopupStyle"
+      :z-index="1900"
+      round
+      closeable
+      @update:visible="onTemplateVisibleChange"
+    >
       <div class="template-import-panel">
         <h2>{{ templateDialogTitle }}</h2>
         <div class="template-form">
@@ -160,9 +173,23 @@
               input-align="right"
             />
           </div>
-          <div class="template-form__row is-clickable" @click="openTemplateTargetPicker">
+          <div class="template-form__row" :class="{ 'is-clickable': !isWideScreen }" @click="!isWideScreen && openTemplateTargetPicker()">
             <span class="template-form__label">{{ t("myPage.templates.target") }}</span>
-            <span class="template-form__value">
+            <div v-if="isWideScreen" class="template-target-options" role="radiogroup" :aria-label="t('myPage.templates.target')">
+              <button
+                v-for="option in TEMPLATE_TARGET_OPTIONS"
+                :key="option.value"
+                type="button"
+                class="template-target-option"
+                :class="{ current: templateForm.target === option.value }"
+                role="radio"
+                :aria-checked="templateForm.target === option.value"
+                @click.stop="setTemplateTarget(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <span v-else class="template-form__value">
               {{ templateTargetLabel }}
               <nut-icon name="rect-right" size="12px" />
             </span>
@@ -189,15 +216,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, onMounted, reactive, ref } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { Dialog } from "@nutui/nutui";
 import { useI18n } from "vue-i18n";
+import { onBeforeRouteLeave, useRouter } from "vue-router";
 
 import { useCloudflareApi } from "@/api/app";
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton.vue";
 import DesktopPicker from "@/components/DesktopPicker.vue";
 import { useSettingsApi } from "@/api/settings";
 import { useBackend } from "@/hooks/useBackend";
+import { useWideScreenNarrowMode } from "@/hooks/useWideScreenNarrowMode";
 import { useAppNotifyStore } from "@/store/appNotify";
 import { useCodeStore } from "@/store/codeStore";
 import { useSettingsStore } from "@/store/settings";
@@ -210,8 +239,10 @@ const settingsStore = useSettingsStore();
 const settingsApi = useSettingsApi();
 const cloudflareApi = useCloudflareApi();
 const cmStore = useCodeStore();
+const { isWideScreen } = useWideScreenNarrowMode();
 const { showNotify } = useAppNotifyStore();
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const router = useRouter();
 const { icon, env } = useBackend();
 const TEMPLATE_EDITOR_ID = "TemplateEditor";
 
@@ -232,6 +263,49 @@ const templateDialogTitle = computed(() => {
   if (templateEditingId.value) return t("myPage.templates.editTitle");
   return templateFromFile.value ? t("myPage.templates.importTitle") : t("myPage.templates.createTitle");
 });
+const templatePopupStyle = computed(() => (isWideScreen.value
+  ? { width: "800px", maxWidth: "92vw", height: "80vh" }
+  : { height: "82vh" }));
+
+const templateEditorContent = () => String(cmStore.EditCode[TEMPLATE_EDITOR_ID] || "");
+const templateState = () => JSON.stringify({
+  id: templateForm.id,
+  name: templateForm.name,
+  target: templateForm.target,
+  content: templateEditorContent(),
+});
+const templateSnapshot = ref("");
+const captureTemplateSnapshot = () => {
+  templateSnapshot.value = templateState();
+};
+const isTemplateDirty = () => templateSnapshot.value !== templateState();
+const templateCloseAllowed = ref(false);
+const closeTemplateDialog = () => {
+  templateCloseAllowed.value = true;
+  templateImportVisible.value = false;
+  templateEditingId.value = "";
+};
+const onTemplateVisibleChange = (visible: boolean) => {
+  if (visible) {
+    templateCloseAllowed.value = false;
+    templateImportVisible.value = true;
+    return;
+  }
+  if (templateCloseAllowed.value) return;
+  if (!isTemplateDirty()) {
+    closeTemplateDialog();
+    return;
+  }
+  Dialog({
+    title: t("myPage.unsaved.title"),
+    content: t("myPage.unsaved.content"),
+    popClass: "auto-dialog",
+    okText: t("myPage.unsaved.discard"),
+    cancelText: t("myPage.unsaved.keep"),
+    closeOnClickOverlay: true,
+    onOk: closeTemplateDialog,
+  });
+};
 
 const requestForm = reactive({
   defaultUserAgent: "",
@@ -270,6 +344,29 @@ const requestSummary = computed(() => {
   });
 });
 
+const rangeError = (value: string, labelKey: string, min: number, max: number) => {
+  const text = String(value ?? "").trim();
+  const number = Number(text);
+  if (/^\d+$/.test(text) && number >= min && number <= max) return "";
+  return t("myPage.request.validation.range", { label: t(labelKey), min, max });
+};
+const requestFieldErrors = computed<Record<string, string>>(() => {
+  const errors: Record<string, string> = {};
+  const setError = (key: string, message: string) => {
+    if (message) errors[key] = message;
+  };
+  setError("defaultTimeout", rangeError(requestForm.defaultTimeout, "myPage.request.defaultTimeout", 1000, 120000));
+  setError("backendRequestConcurrency", rangeError(requestForm.backendRequestConcurrency, "myPage.request.backendRequestConcurrency", 1, 12));
+  setError("backendRequestConcurrencyWaitTime", rangeError(requestForm.backendRequestConcurrencyWaitTime, "myPage.request.backendRequestConcurrencyWaitTime", 0, 5000));
+  setError("remoteCacheTtl", rangeError(requestForm.remoteCacheTtl, "myPage.request.remoteCacheTtl", 0, 3600));
+  const nodeInfoApiUrl = String(requestForm.nodeInfoApiUrl || "").trim();
+  if (!/^https:\/\/\S+$/i.test(nodeInfoApiUrl) || !nodeInfoApiUrl.includes("{ip}")) {
+    errors.nodeInfoApiUrl = t("myPage.request.validation.nodeInfoApiUrl");
+  }
+  return errors;
+});
+const isRequestValid = computed(() => Object.keys(requestFieldErrors.value).length === 0);
+
 const syncRequestForm = () => {
   requestForm.defaultUserAgent = settingsStore.defaultUserAgent || "";
   requestForm.defaultFlowUserAgent = settingsStore.defaultFlowUserAgent || "";
@@ -281,21 +378,42 @@ const syncRequestForm = () => {
   requestForm.nodeInfoApiUrl = settingsStore.nodeInfoApiUrl || "https://ipwho.is/{ip}";
 };
 
+const requestSnapshot = ref("");
 const startRequestEdit = () => {
   syncRequestForm();
+  requestSnapshot.value = JSON.stringify(requestForm);
   requestEditing.value = true;
 };
 
 const cancelRequestEdit = () => {
+  if (JSON.stringify(requestForm) !== requestSnapshot.value) {
+    Dialog({
+      title: t("myPage.unsaved.title"),
+      content: t("myPage.unsaved.content"),
+      popClass: "auto-dialog",
+      okText: t("myPage.unsaved.discard"),
+      cancelText: t("myPage.unsaved.keep"),
+      closeOnClickOverlay: true,
+      onOk: () => {
+        syncRequestForm();
+        requestEditing.value = false;
+      },
+    });
+    return;
+  }
   syncRequestForm();
   requestEditing.value = false;
 };
 
 const saveRequestSettings = async () => {
+  if (!isRequestValid.value) return;
   requestSaving.value = true;
   try {
     const saved = await settingsStore.changeSettings({ ...requestForm });
+    if (saved) requestSnapshot.value = JSON.stringify(requestForm);
     requestEditing.value = !saved;
+  } catch (error) {
+    showNotify({ type: "danger", title: t("myPage.request.saveFailed", { e: errorMessage(error) }) });
   } finally {
     requestSaving.value = false;
   }
@@ -342,6 +460,7 @@ const openTemplateImport = () => {
   templateEditorLanguage.value = "yaml";
   cmStore.setEditCode(TEMPLATE_EDITOR_ID, "");
   templateImportVisible.value = true;
+  captureTemplateSnapshot();
 };
 
 const openTemplateEdit = (template: any) => {
@@ -357,6 +476,7 @@ const openTemplateEdit = (template: any) => {
     isSingBox ? JSON.stringify(template.config || {}, null, 2) : toYaml(template.config || {}),
   );
   templateImportVisible.value = true;
+  captureTemplateSnapshot();
 };
 
 const importTemplateFromFile = async (event: Event) => {
@@ -374,6 +494,7 @@ const importTemplateFromFile = async (event: Event) => {
   templateEditorLanguage.value = /^[{[]/.test(content.trim()) ? "json" : "yaml";
   cmStore.setEditCode(TEMPLATE_EDITOR_ID, content);
   templateImportVisible.value = true;
+  captureTemplateSnapshot();
 };
 
 const openTemplateTargetPicker = () => {
@@ -381,11 +502,15 @@ const openTemplateTargetPicker = () => {
   templateTargetPickerVisible.value = true;
 };
 
-const handleTemplateTargetConfirm = ({ selectedValue }) => {
-  templateForm.target = selectedValue?.[0] || "mihomo";
+const setTemplateTarget = (target: string) => {
+  templateForm.target = target || "mihomo";
   selectedTemplateTargetValue.value = [templateForm.target];
   templateEditorLanguage.value = templateForm.target === "sing-box" ? "json" : "yaml";
   templateTargetPickerVisible.value = false;
+};
+
+const handleTemplateTargetConfirm = ({ selectedValue }) => {
+  setTemplateTarget(selectedValue?.[0]);
 };
 
 const saveTemplate = async () => {
@@ -408,8 +533,7 @@ const saveTemplate = async () => {
       : await cloudflareApi.createTemplate(payload);
     if (res?.data?.status !== "success") throw new Error("import failed");
     await fetchTemplates();
-    templateImportVisible.value = false;
-    templateEditingId.value = "";
+    closeTemplateDialog();
     showNotify({ type: "success", title: t("myPage.templates.saveSucceed") });
   } catch (error) {
     showNotify({ type: "danger", title: t("myPage.templates.saveFailed", { e: errorMessage(error) }) });
@@ -418,7 +542,35 @@ const saveTemplate = async () => {
   }
 };
 
-const deleteCustomTemplate = (name: string) => {
+const getTemplateReferences = async (name: string) => {
+  try {
+    const res = await cloudflareApi.getCollections();
+    const collections = res?.data?.status === "success" && Array.isArray(res.data.data) ? res.data.data : [];
+    return collections
+      .filter((collection) => collection.templateId === name)
+      .map((collection) => collection.displayName || collection.name || collection.id);
+  } catch {
+    return [];
+  }
+};
+
+const deleteCustomTemplate = async (name: string) => {
+  const references = await getTemplateReferences(name);
+  if (references.length > 0) {
+    Dialog({
+      title: t("myPage.templates.deleteBlockedTitle"),
+      content: t("myPage.templates.deleteBlockedContent", {
+        name,
+        collections: references.join(locale.value.startsWith("zh") ? "、" : ", "),
+      }),
+      popClass: "auto-dialog",
+      okText: t("specificWord.confirm"),
+      noCancelBtn: true,
+      closeOnClickOverlay: true,
+    });
+    return;
+  }
+
   Dialog({
     title: t("myPage.templates.deleteTitle"),
     content: t("myPage.templates.deleteContent", { name }),
@@ -427,10 +579,13 @@ const deleteCustomTemplate = (name: string) => {
     cancelText: t("myPage.btn.cancel"),
     closeOnClickOverlay: true,
     onOk: async () => {
-      const res = await cloudflareApi.deleteTemplate(name);
-      if (res?.data?.status === "success") {
+      try {
+        const res = await cloudflareApi.deleteTemplate(name);
+        if (res?.data?.status !== "success") throw new Error("delete failed");
         await fetchTemplates();
         showNotify({ type: "success", title: t("myPage.templates.deleteSucceed") });
+      } catch (error) {
+        showNotify({ type: "danger", title: t("myPage.templates.deleteFailed", { e: errorMessage(error) }) });
       }
     },
   });
@@ -442,9 +597,27 @@ const restoreFromFile = async (event: Event) => {
   target.value = "";
   if (!file) return;
 
+  let content = "";
+  let payload: Record<string, unknown> = {};
+  try {
+    content = await file.text();
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid backup");
+    payload = parsed as Record<string, unknown>;
+  } catch (error) {
+    showNotify({ type: "danger", title: t("myPage.backup.restoreInvalid", { e: errorMessage(error) }) });
+    return;
+  }
+
+  const count = (key: string) => Array.isArray(payload[key]) ? (payload[key] as unknown[]).length : 0;
   Dialog({
     title: t("myPage.backup.restoreTitle"),
-    content: t("myPage.backup.restoreContent"),
+    content: t("myPage.backup.restoreSummary", {
+      file: file.name,
+      sources: count("sources"),
+      collections: count("collections"),
+      templates: count("templates"),
+    }),
     popClass: "auto-dialog",
     okText: t("myPage.backup.restore"),
     cancelText: t("myPage.btn.cancel"),
@@ -452,7 +625,6 @@ const restoreFromFile = async (event: Event) => {
     onOk: async () => {
       restoreIsLoading.value = true;
       try {
-        const content = await file.text();
         const res = await settingsApi.restoreSettings({ content });
         if (res?.data?.status !== "success") throw new Error("restore failed");
         await settingsStore.fetchSettings();
@@ -468,7 +640,50 @@ const restoreFromFile = async (event: Event) => {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 
-onMounted(fetchTemplates);
+const hasUnsavedChanges = computed(() => {
+  const templateDirty = templateImportVisible.value && isTemplateDirty();
+  const requestDirty = requestEditing.value && JSON.stringify(requestForm) !== requestSnapshot.value;
+  return templateDirty || requestDirty;
+});
+const navigationPromptOpen = ref(false);
+const navigationUnlocked = ref(false);
+onBeforeRouteLeave((to) => {
+  if (navigationUnlocked.value) return true;
+  if (!hasUnsavedChanges.value || to.path === router.currentRoute.value.path) return true;
+  if (navigationPromptOpen.value) return false;
+  navigationPromptOpen.value = true;
+  Dialog({
+    title: t("myPage.unsaved.title"),
+    content: t("myPage.unsaved.content"),
+    popClass: "auto-dialog",
+    okText: t("myPage.unsaved.discard"),
+    cancelText: t("myPage.unsaved.keep"),
+    closeOnClickOverlay: false,
+    onOk: () => {
+      navigationPromptOpen.value = false;
+      navigationUnlocked.value = true;
+      router.push(to.fullPath);
+    },
+    onCancel: () => {
+      navigationPromptOpen.value = false;
+    },
+  });
+  return false;
+});
+
+const onBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges.value) return;
+  event.preventDefault();
+  event.returnValue = "";
+};
+
+onMounted(() => {
+  fetchTemplates();
+  window.addEventListener("beforeunload", onBeforeUnload);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", onBeforeUnload);
+});
 </script>
 
 <style lang="scss" scoped>
@@ -673,6 +888,36 @@ onMounted(fetchTemplates);
   color: var(--second-text-color);
 }
 
+.template-target-options {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--background-color);
+}
+
+.template-target-option {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--second-text-color);
+  font: inherit;
+  cursor: pointer;
+
+  &.current {
+    background: var(--primary-color);
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
 .template-form__value {
   margin-left: auto;
   display: flex;
@@ -799,9 +1044,21 @@ onMounted(fetchTemplates);
     }
   }
 
+  .setting-row + .setting-error + .setting-row {
+    border-top: 1px solid var(--divider-color);
+  }
+
   .setting-label {
     flex: 0 0 auto;
     color: var(--second-text-color);
+  }
+
+  .setting-error {
+    margin: -4px 0 8px;
+    color: #d93025;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: right;
   }
 
   .setting-input {

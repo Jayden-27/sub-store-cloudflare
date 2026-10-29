@@ -46,6 +46,17 @@ type InternalBuildOptions = BuildOptions & {
 
 const TEST_URL = "https://www.gstatic.com/generate_204";
 
+export class SubscriptionBuildError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "SubscriptionBuildError";
+  }
+}
+
+function subscriptionError(message: string, status = 422) {
+  return new SubscriptionBuildError(message, status);
+}
+
 export function getTargetContentType(target: SubscriptionTarget) {
   if (target === "sing-box" || target === "json") return "application/json; charset=utf-8";
   if (target === "v2ray" || target === "uri" || target === "surge" || target === "surge-mac" || target === "surfboard" || target === "loon" || target === "shadowrocket" || target === "qx") return "text/plain; charset=utf-8";
@@ -59,7 +70,7 @@ export async function buildSubscription(options: BuildOptions) {
 export async function buildSubscriptionResult(options: BuildOptions) {
   const internal: InternalBuildOptions = { ...options, responseMetadata: new Map() };
   const proxies = await loadProxyNodes(internal);
-  if (proxies.length === 0) throw new Error("No available nodes found");
+  if (proxies.length === 0) throw subscriptionError("No available nodes found");
   const body = renderBuildTarget(proxies, options);
   return { body, metadata: selectResponseMetadata(internal), nodes: proxies.length };
 }
@@ -94,7 +105,7 @@ export async function previewSubscription(options: Pick<BuildOptions, "source" |
 
 export async function previewSourceContent(source: SubscriptionSource, settings?: AppSettings) {
   const original = parseProxies(decodeMaybeBase64(source.content || source.url || ""));
-  if (original.length === 0) throw new Error(formatInvalidLocalContentError(source.content || source.url || ""));
+  if (original.length === 0) throw subscriptionError(formatInvalidLocalContentError(source.content || source.url || ""));
   const processed = ensureUniqueProxyNames(await applyFilters(original, getFilters(source), settings, {
     targetPlatform: "json",
     sourceId: source.id,
@@ -107,7 +118,7 @@ export async function previewSourceContent(source: SubscriptionSource, settings?
 
 export function validateSubscriptionContent(raw: string) {
   const proxies = parseProxies(decodeMaybeBase64(raw));
-  if (proxies.length === 0) throw new Error(formatInvalidLocalContentError(raw));
+  if (proxies.length === 0) throw subscriptionError(formatInvalidLocalContentError(raw));
   return addPreviewIds(proxies);
 }
 
@@ -119,7 +130,7 @@ export async function convertSubscriptionContent(input: {
   settings?: AppSettings;
 }) {
   const parsed = parseProxies(decodeMaybeBase64(input.content));
-  if (parsed.length === 0) throw new Error(formatInvalidLocalContentError(input.content));
+  if (parsed.length === 0) throw subscriptionError(formatInvalidLocalContentError(input.content));
   const processed = ensureUniqueProxyNames(await applyFilters(parsed, input.filters || [], input.settings, {
     targetPlatform: input.target,
     sourceId: "one-shot",
@@ -200,9 +211,9 @@ async function loadSubscriptionRaw(
   }
 
   const urls = splitSourceUrls(sub.url);
-  if (urls.length === 0) throw new Error(`Remote source ${sub.name} has no valid URL`);
+  if (urls.length === 0) throw subscriptionError(`Remote source ${sub.name} has no valid URL`);
   if (urls.length > MAX_REMOTE_SOURCE_URLS) {
-    throw new Error(`Remote source ${sub.name} exceeds the ${MAX_REMOTE_SOURCE_URLS} URL limit`);
+    throw subscriptionError(`Remote source ${sub.name} exceeds the ${MAX_REMOTE_SOURCE_URLS} URL limit`);
   }
 
   const contents = await runWithConcurrency(
@@ -212,7 +223,7 @@ async function loadSubscriptionRaw(
   );
   const totalBytes = contents.reduce((total, item) => total + utf8ByteLength(item.content), 0);
   if (totalBytes > MAX_REMOTE_SOURCE_TOTAL_BYTES) {
-    throw new Error(`Remote source ${sub.name} exceeds the ${MAX_REMOTE_SOURCE_TOTAL_BYTES / (1024 * 1024)} MiB combined limit`);
+    throw subscriptionError(`Remote source ${sub.name} exceeds the ${MAX_REMOTE_SOURCE_TOTAL_BYTES / (1024 * 1024)} MiB combined limit`);
   }
   const metadata = contents.map((item) => item.metadata).find((item) => Object.keys(item).length > 0) || metadataFromSource(sub);
   runtime?.responseMetadata.set(sub.id, metadata);
@@ -249,17 +260,26 @@ async function fetchSubscriptionUrl(
     const requestHeaders: Record<string, string> = { "user-agent": getSourceUserAgent(sub, settings, requestUserAgent) };
     if (cached?.headers.get("x-sub-store-etag")) requestHeaders["if-none-match"] = cached.headers.get("x-sub-store-etag") || "";
     if (cached?.headers.get("x-sub-store-last-modified")) requestHeaders["if-modified-since"] = cached.headers.get("x-sub-store-last-modified") || "";
-    const response = await fetch(url, {
-      headers: requestHeaders,
-      signal: controller.signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: requestHeaders,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw subscriptionError(
+        `Remote source ${sub.name} ${controller.signal.aborted ? "timed out" : "request failed"}: ${message}`,
+        controller.signal.aborted ? 504 : 502,
+      );
+    }
     if (response.status === 304 && cached) {
       return {
         content: await readResponseText(cached, MAX_REMOTE_SOURCE_RESPONSE_BYTES, `Cached remote source ${sub.name}`),
         metadata: metadataFromResponse(cached, "refresh"),
       };
     }
-    if (!response.ok) throw new Error(`Remote source ${sub.name} failed: ${response.status}`);
+    if (!response.ok) throw subscriptionError(`Remote source ${sub.name} failed: ${response.status}`, 502);
     const content = await readResponseText(response, MAX_REMOTE_SOURCE_RESPONSE_BYTES, `Remote source ${sub.name}`);
     const metadata = metadataFromResponse(response, runtime?.forceRefresh ? "refresh" : "miss");
     if (cacheKey && cacheTtl > 0) {
@@ -1083,7 +1103,7 @@ async function applyFilters(
   scriptContext: { targetPlatform: SubscriptionTarget; sourceId?: string; collectionId?: string } = { targetPlatform: "json" },
 ) {
   const scriptError = validateScriptActions(filters);
-  if (scriptError) throw new Error(scriptError);
+  if (scriptError) throw subscriptionError(scriptError);
   let current = proxies;
   for (const filter of filters) {
     if (!filter || typeof filter !== "object") continue;
@@ -1620,13 +1640,13 @@ function renderQxProxies(proxies: ProxyNode[]) {
 
 function renderTextProxyList(proxies: ProxyNode[], target: string, producer: (proxy: ProxyNode) => string | undefined) {
   const lines = proxies.map(producer).filter((line): line is string => Boolean(line));
-  if (lines.length === 0) throw new Error(`No supported nodes for ${target} output`);
+  if (lines.length === 0) throw subscriptionError(`No supported nodes for ${target} output`);
   return lines.join("\n");
 }
 
 function renderEgernYaml(proxies: ProxyNode[]) {
   const list = proxies.map(toEgernProxy).filter((proxy) => Boolean(proxy));
-  if (list.length === 0) throw new Error("No supported nodes for egern output");
+  if (list.length === 0) throw subscriptionError("No supported nodes for egern output");
   return stringifyYaml({ proxies: list });
 }
 
@@ -1706,7 +1726,7 @@ function templateConfigForTarget(target: SubscriptionTarget, template?: RoutingT
 }
 
 function renderTarget(proxies: ProxyNode[], target: SubscriptionTarget, template?: RoutingTemplate) {
-  if (proxies.length === 0) throw new Error(`No supported nodes for ${target} output`);
+  if (proxies.length === 0) throw subscriptionError(`No supported nodes for ${target} output`);
   const templateConfig = templateConfigForTarget(target, template);
   if (target === "mihomo" || target === "stash") return renderMihomoYaml(proxies, new URL("https://sub-store.local/convert"), templateConfig);
   if (target === "surge") return renderSurgeProxies(proxies);
@@ -2064,7 +2084,7 @@ function formatAlpn(value: unknown) {
 function renderSingBoxJson(proxies: ProxyNode[], template?: RoutingTemplateConfig) {
   const nodeOutbounds = proxies.map((proxy) => toSingBoxOutbound(normalizeWsPath(proxy))).filter(isSingBoxOutbound);
   const tags = nodeOutbounds.map((outbound) => String(outbound.tag));
-  if (tags.length === 0) throw new Error("No supported nodes for sing-box output");
+  if (tags.length === 0) throw subscriptionError("No supported nodes for sing-box output");
 
   const outbounds = [
     {

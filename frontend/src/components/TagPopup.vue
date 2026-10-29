@@ -3,16 +3,12 @@
   <nut-popup
     v-model:visible="isVisible"
     pop-class="tag-popup"
-    position="bottom"
-    :style="{
-      maxHeight: '70vh',
-      padding: '20px 12px 0 12px',
-      backgroundColor: 'var(--background-color)',
-    }"
+    :position="isWideScreen ? 'center' : 'bottom'"
+    :style="popupStyle"
+    :z-index="1900"
     :lock-scroll="true"
     :safe-area-inset-bottom="true"
     close-icon="close-little"
-    z-index="11000"
     closeable
     round
     @close="close"
@@ -82,8 +78,13 @@ import { useSubsStore } from "@/store/subs";
 import draggable from "vuedraggable";
 
 import { useI18n } from "vue-i18n";
+import { useWideScreenNarrowMode } from "@/hooks/useWideScreenNarrowMode";
 
 const { t } = useI18n();
+const { isWideScreen } = useWideScreenNarrowMode();
+const popupStyle = computed(() => (isWideScreen.value
+  ? { maxHeight: '70vh', width: '520px', maxWidth: '92vw', padding: '20px 24px 24px', backgroundColor: 'var(--background-color)' }
+  : { maxHeight: '70vh', padding: '20px 12px 0 12px', backgroundColor: 'var(--background-color)' }));
 const subsStore = useSubsStore();
 const { hasSubs, hasCollections, subs, collections } = storeToRefs(subsStore);
 const hasUntagged = ref(false);

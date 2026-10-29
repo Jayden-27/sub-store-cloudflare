@@ -3,16 +3,12 @@
   <nut-popup
     v-model:visible="isVisible"
     pop-class="icon-popup"
-    position="bottom"
-    :style="{
-      height: `95%`,
-      padding: '20px 12px 0 12px',
-      backgroundColor: 'var(--background-color)',
-    }"
+    :position="isWideScreen ? 'center' : 'bottom'"
+    :style="popupStyle"
+    :z-index="1900"
     :lock-scroll="true"
     :safe-area-inset-bottom="true"
     close-icon="close-little"
-    z-index="11000"
     closeable
     round
     @close="close"
@@ -222,6 +218,9 @@ const iconData = computed(() => {
 });
 // 宽屏（>=768px）每行显示 8 个，窄屏每行显示 4 个
 const { isWideScreen } = useWideScreenNarrowMode();
+const popupStyle = computed(() => (isWideScreen.value
+  ? { height: '85vh', width: '800px', maxWidth: '92vw', padding: '20px 24px 0', backgroundColor: 'var(--background-color)' }
+  : { height: '95%', padding: '20px 12px 0 12px', backgroundColor: 'var(--background-color)' }));
 const iconsPerRow = computed(() => (isWideScreen.value ? 8 : 4));
 const iconItemWidth = computed(() => `${(96 / iconsPerRow.value).toFixed(4)}%`);
 const iconItemGap = computed(() => `calc(4% / ${iconsPerRow.value - 1})`);
@@ -392,7 +391,7 @@ const refreshIcons = () => {
   if (!form.iconCollectionUrl) {
     return Toast.warn(t(`iconCollectionPage.errorIconCollectionUrlTips`));
   }
-  if (form.iconCollectionUrl && !/^(http|https)/.test(form.iconCollectionUrl)) {
+  if (form.iconCollectionUrl && !/^https:\/\//i.test(form.iconCollectionUrl)) {
     return Toast.warn(t(`iconCollectionPage.errorIconCollectionUrlTips`));
   }
   if (form.iconCollectionUrl) {

@@ -252,6 +252,7 @@ export default {
         helpBtn: "我知道了",
         errorTitle: "提交出错！",
         errorBtn: "去修改",
+        saveFailed: "保存失败",
         succeedMsg: "保存成功！",
         deleteTitle: "删除确认",
         deleteDes: "是否确认删除此操作？删除后不可恢复！\n\ntips: 可使用开关控制即时预览时是否生效",
@@ -366,7 +367,9 @@ export default {
         },
         icon: {
           label: "图标链接",
-          placeholder: "可点击左侧或顶部图标, 从图标库填入图标链接，不要使用 jpg"
+          placeholder: "可点击左侧或顶部图标, 从图标库填入图标链接，不要使用 jpg",
+          invalid: "图标链接需以 https:// 或 data:image/ 开头",
+          loadFailed: "图标加载失败，已显示默认图标"
         },
         isIconColor: {
           label: "图标原色"
@@ -707,6 +710,12 @@ export default {
     }
   },
   myPage: {
+    unsaved: {
+      title: "放弃未保存的修改？",
+      content: "关闭后本次修改不会保存。",
+      discard: "放弃修改",
+      keep: "继续编辑"
+    },
     profile: {
       desc: "订阅聚合、节点处理和云端规则模板",
       runtime: "运行环境",
@@ -719,7 +728,9 @@ export default {
       export: "备份",
       restore: "恢复",
       restoreTitle: "恢复备份",
-      restoreContent: "恢复会覆盖同名订阅源、组合订阅、规则模板和设置。建议先导出当前备份。"
+      restoreContent: "恢复会覆盖同名订阅源、组合订阅、规则模板和设置。建议先导出当前备份。",
+      restoreSummary: "文件：{file}\n\n将恢复 {sources} 个订阅源、{collections} 个组合、{templates} 个自定义模板和请求设置。同 ID 数据会被覆盖，其他数据保留。",
+      restoreInvalid: "备份文件无效\n{e}"
     },
     templates: {
       title: "规则模板",
@@ -742,7 +753,10 @@ export default {
       saveFailed: "模板保存失败\n{e}",
       deleteTitle: "删除模板",
       deleteContent: "确认删除模板 {name}？",
-      deleteSucceed: "模板已删除"
+      deleteSucceed: "模板已删除",
+      deleteFailed: "模板删除失败\n{e}",
+      deleteBlockedTitle: "模板仍在使用",
+      deleteBlockedContent: "模板 {name} 正被以下组合使用：{collections}。\n\n请先修改这些组合的规则模板后再删除。"
     },
     request: {
       title: "请求设置",
@@ -754,7 +768,12 @@ export default {
       remoteCacheTtl: "远程订阅边缘缓存秒数，0 表示关闭",
       remoteCacheStaleOnError: "远程订阅失败时允许使用最近的边缘缓存",
       nodeInfoApiUrl: "节点信息 HTTPS API，必须包含 {ip}",
-      summary: "当前远程订阅拉取并发 {concurrency}，超时 {timeout}ms。"
+      summary: "当前远程订阅拉取并发 {concurrency}，超时 {timeout}ms。",
+      saveFailed: "保存请求设置失败\n{e}",
+      validation: {
+        range: "{label}需为 {min}–{max} 的整数",
+        nodeInfoApiUrl: "请输入包含 {ip} 的 HTTPS 地址"
+      }
     },
     btn: {
       cancel: "取消",
@@ -845,7 +864,7 @@ export default {
     iconCollectionPlaceholder: "请输入图标仓库地址",
     iconName: "图标名称",
     iconNamePlaceholder: "请输入图标名称",
-    errorIconCollectionUrlTips: "请输入正确的图标仓库地址",
+    errorIconCollectionUrlTips: "请输入以 https:// 开头的图标仓库地址",
     copySuccessTips: "已复制图标地址",
     loadingTitle: "图标加载中",
     loadingDesc: "首次打开会请求图标仓库，请稍候片刻",

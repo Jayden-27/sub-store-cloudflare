@@ -15,8 +15,9 @@ import { useGlobalStore } from "@/store/global";
 import { useSubsStore } from "@/store/subs";
 import { getFlowsUrlList } from "@/utils/getFlowsUrlList";
 import { initStores } from "@/utils/initApp";
+import { installAccessibilityEnhancements } from "@/utils/accessibility";
 import { storeToRefs } from "pinia";
-import { ref, watchEffect, onMounted } from "vue";
+import { ref, watchEffect, onBeforeUnmount, onMounted } from "vue";
 
 const subsStore = useSubsStore();
 const globalStore = useGlobalStore();
@@ -25,11 +26,16 @@ const { shouldShowSideBar } = useWideScreenNarrowMode();
 const { subs, flows } = storeToRefs(subsStore);
 
 const allLength = ref(null);
+let removeAccessibilityEnhancements: (() => void) | undefined;
 
 useThemes();
 
 onMounted(() => {
-  initStores(true, true, false);
+  initStores(false, true, false);
+  removeAccessibilityEnhancements = installAccessibilityEnhancements();
+});
+onBeforeUnmount(() => {
+  removeAccessibilityEnhancements?.();
 });
 
 watchEffect(() => {
@@ -43,6 +49,12 @@ watchEffect(() => {
 </script>
 
 <style lang="scss">
+.nut-button[role="button"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
 #app {
   font-family: "Roboto", "nutui-iconfont", "Noto Sans", Arial, "PingFang SC",
     "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "ST Heiti",

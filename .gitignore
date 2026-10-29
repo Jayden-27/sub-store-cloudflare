@@ -50,12 +50,13 @@ cloudflare/src/generated/
 sub-store-git-backups-*/
 **/sub-store-git-backups-*/
 
-# Generated Cloudflare types
-cloudflare/worker-configuration.d.ts
-
 # Editor and OS state
 .idea/
 .vscode/*
 !**/.vscode/extensions.json
 *.swp
 *.swo
+
+# Sub-package lockfiles (workspace uses root pnpm-lock.yaml)
+cloudflare/pnpm-lock.yaml
+frontend/pnpm-lock.yaml

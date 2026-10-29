@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { failed, isTokenValid } from "../lib/http";
 import { authorizeScopedDownload } from "../lib/compatibility-resources";
-import { buildSubscriptionResult, getTargetContentType, normalizeTarget, normalizeTargetAlias } from "../lib/subscription";
+import { SubscriptionBuildError, buildSubscriptionResult, getTargetContentType, normalizeTarget, normalizeTargetAlias } from "../lib/subscription";
 import { getRoutingTemplate, getSettings, getSource, getSubscriptionCollection, getSubscriptionSources } from "../lib/store";
 import type { SubscriptionCollection, SubscriptionSource, SubscriptionTarget } from "../types";
 
@@ -94,7 +94,9 @@ async function renderDownload(
     setResponseHeader(headers, "x-sub-store-cache", result.metadata.cacheStatus);
     return new Response(result.body, { headers });
   } catch (error) {
-    return failed(c, error instanceof Error ? error.message : String(error), 500);
+    const message = error instanceof Error ? error.message : String(error);
+    const status = error instanceof SubscriptionBuildError ? error.status : 500;
+    return failed(c, message, status);
   }
 }
 

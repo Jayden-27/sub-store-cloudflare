@@ -252,6 +252,7 @@ export default {
         helpBtn: "I Understand",
         errorTitle: "Submit Error!",
         errorBtn: "OK",
+        saveFailed: "Save failed",
         succeedMsg: "Save Successfully!",
         deleteTitle: "Delete Confirm",
         deleteDes: "Do you really want to delete this action? Deleted action cannot be restored!",
@@ -366,7 +367,9 @@ export default {
         },
         icon: {
           label: "Icon",
-          placeholder: "Click on the left or top icon, fill in the icon link from the icon library, do not use jpg."
+          placeholder: "Click on the left or top icon, fill in the icon link from the icon library, do not use jpg.",
+          invalid: "Icon URL must start with https:// or data:image/",
+          loadFailed: "The icon failed to load; the default icon is shown"
         },
         isIconColor: {
           label: "Custom Icon Use Original Color"
@@ -707,6 +710,12 @@ export default {
     }
   },
   myPage: {
+    unsaved: {
+      title: "Discard unsaved changes?",
+      content: "Your edits will be lost if you close now.",
+      discard: "Discard",
+      keep: "Keep editing"
+    },
     profile: {
       desc: "Subscription aggregation, node processing, and cloud rule templates",
       runtime: "Runtime",
@@ -719,7 +728,9 @@ export default {
       export: "Backup",
       restore: "Restore",
       restoreTitle: "Restore backup",
-      restoreContent: "Restoring will overwrite sources, collections, rule templates, and settings with the same names. Export a current backup first."
+      restoreContent: "Restoring will overwrite sources, collections, rule templates, and settings with the same names. Export a current backup first.",
+      restoreSummary: "File: {file}\n\nThis will restore {sources} source(s), {collections} collection(s), {templates} custom template(s), and request settings. Items with the same ID are overwritten; other data is kept.",
+      restoreInvalid: "Invalid backup file\n{e}"
     },
     templates: {
       title: "Rule Templates",
@@ -742,7 +753,10 @@ export default {
       saveFailed: "Failed to save template\n{e}",
       deleteTitle: "Delete template",
       deleteContent: "Delete template {name}?",
-      deleteSucceed: "Template deleted"
+      deleteSucceed: "Template deleted",
+      deleteFailed: "Failed to delete template\n{e}",
+      deleteBlockedTitle: "Template is in use",
+      deleteBlockedContent: "Template {name} is used by these collections: {collections}.\n\nChange their rule template before deleting it."
     },
     request: {
       title: "Request Settings",
@@ -754,7 +768,12 @@ export default {
       remoteCacheTtl: "Remote subscription edge-cache TTL in seconds; 0 disables it",
       remoteCacheStaleOnError: "Use the latest edge cache when a remote source fails",
       nodeInfoApiUrl: "HTTPS node-info API URL containing {ip}",
-      summary: "Remote subscription concurrency is {concurrency}; timeout is {timeout}ms."
+      summary: "Remote subscription concurrency is {concurrency}; timeout is {timeout}ms.",
+      saveFailed: "Failed to save request settings\n{e}",
+      validation: {
+        range: "{label} must be an integer from {min} to {max}",
+        nodeInfoApiUrl: "Enter an HTTPS URL containing {ip}"
+      }
     },
     btn: {
       cancel: "Cancel",
@@ -845,7 +864,7 @@ export default {
     iconCollectionPlaceholder: "Please input icon collection url",
     iconName: "Icon Name",
     iconNamePlaceholder: "Please input icon name",
-    errorIconCollectionUrlTips: "Please enter correct url",
+    errorIconCollectionUrlTips: "Enter an icon repository URL starting with https://",
     copySuccessTips: "The icon url has been copied",
     loadingTitle: "Loading icons",
     loadingDesc: "Fetching the icon collection for the first open.",

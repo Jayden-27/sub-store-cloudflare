@@ -28,7 +28,7 @@ Cloudflare 会读取根目录 [../wrangler.jsonc](../wrangler.jsonc)，自动 pr
 跨平台生成两个 token：
 
 ```bash
-node -e "const{randomBytes:r}=require('node:crypto');console.log(r(32).toString('base64url'));console.log(r(32).toString('base64url'))"
+node --input-type=module -e "import{randomBytes}from'node:crypto';console.log(randomBytes(32).toString('base64url'));console.log(randomBytes(32).toString('base64url'))"
 ```
 
 第一行用于 admin token，第二行用于 download token。两个值必须不同。仓库根目录不提供 `.dev.vars.example`，避免 Cloudflare 部署表单把公开占位字符串当作 Secret 默认值。
@@ -121,6 +121,15 @@ ID 统一使用 1–64 位小写字母、数字、下划线或连字符。组合
 需要复用指定 D1 时，可以在本地 setup 的 `deployment.d1DatabaseId` 填入 Cloudflare 返回的 UUID；该文件属于私有部署配置，不要提交。
 
 常用模板和过滤器预设见 [../config/rule-presets.json](../config/rule-presets.json)。
+
+### 规则模板与输出格式
+
+- 模板目标（`target`）支持 `mihomo`、`stash`、`sing-box`。只有目标匹配时模板才会生效：`mihomo`/`stash` 模板不会套到 sing-box 输出，反之亦然。
+- mihomo 模板除节点、分组、规则外，其余顶层字段（`ipv6`、`tun`、`ntp`、`geox-url`、`profile` 等）会原样保留；分组支持 `include-all` 与 `$all`。
+- sing-box 模板为 JSON（也可用 YAML 编写），会与生成的配置深度合并；`outbounds` 按 `tag` 合并，模板可覆盖 `PROXY`/`AUTO` 等同名出站，实时节点出站始终保留。
+- 一个组合订阅只能绑定一个模板；需要同时提供 mihomo 与 sing-box 两套配置时，分别建立组合订阅。
+- 删除模板前会检查组合引用；仍被使用的模板会返回 `409`，需要先把相关组合改绑到其他模板。
+- 下载错误按原因返回状态：参数或模板错误 `400`，无可兼容节点或数据错误 `422`，上游订阅失败 `502`，上游超时 `504`，其他内部错误 `500`。
 
 验证和渲染：
 
@@ -278,7 +287,7 @@ https://substore.example.com/download/source/<source-id>/uri?token=<download-tok
 
 ## 8. 备份与恢复
 
-管理界面的「设置」页面可以导出和恢复完整配置，包括订阅源、组合订阅、规则模板和请求设置。
+管理界面的「设置」页面可以导出和恢复完整配置，包括订阅源、组合订阅、规则模板和请求设置。恢复前会解析备份文件并展示文件名及资源数量；同 ID 数据会被覆盖，其他数据保留。
 
 也可以用 `Authorization` 请求头导出，避免把管理 token 放进 URL、浏览器历史或代理日志：
 

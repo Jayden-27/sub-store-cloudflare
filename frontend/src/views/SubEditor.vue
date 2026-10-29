@@ -36,6 +36,7 @@
           :src="subIcon"
           fit="cover"
           show-loading
+          @error="iconLoadFailed = true"
           @click="showIconPopup"
         />
       </div>
@@ -138,8 +139,12 @@
               type="text"
               input-align="right"
               left-icon="shop"
+              @blur="validateIconField"
               @click-left-icon="showIconPopup"
             />
+          <span v-if="iconFieldError || iconLoadFailed" class="field-error" role="alert">
+            {{ iconFieldError || $t("editorPage.subConfig.basic.icon.loadFailed") }}
+          </span>
         </nut-form-item>
         <!-- isIconColor -->
         <nut-form-item
@@ -484,6 +489,8 @@
       class="submit-btn btn"
       type="primary"
       shape="square"
+      :loading="isget"
+      :disabled="isget"
     >
       <font-awesome-icon icon="fa-solid fa-floppy-disk" />
       {{ $t("editorPage.subConfig.btn.save") }}
@@ -579,6 +586,8 @@ import { Dialog, Toast } from "@nutui/nutui";
 import { storeToRefs } from "pinia";
 import {
   computed,
+  onBeforeUnmount,
+  onMounted,
   provide,
   reactive,
   ref,
@@ -588,7 +597,7 @@ import {
   watch,
 } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute, useRouter } from "vue-router";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import cmView from "@/views/editCode/cmView.vue";
 import { useCodeStore } from "@/store/codeStore";
 const cmStore = useCodeStore();
@@ -883,6 +892,8 @@ const actionsList = reactive([]);
 const isget = ref(false);
 const fileInput = ref(null);
 const localPreviewLoading = ref(false);
+const iconLoadFailed = ref(false);
+const iconFieldError = ref("");
 const localPreviewSummary = ref<{
   status: "success" | "danger";
   title: string;
@@ -904,6 +915,18 @@ provide("form", form);
 
 const ignoreList: string[] = ["Quick Setting Operator"];
 const localContentText = computed(() => String(cmStore.EditCode['SubEditer'] || form.content || ""));
+const editorInitialState = ref("");
+const getEditorState = () => JSON.stringify({
+  form: toRaw(form),
+  content: localContentText.value,
+  process: actionsToProcess(form.process || [], actionsList, ignoreList),
+});
+const captureEditorState = () => {
+  if (isInit.value) editorInitialState.value = getEditorState();
+};
+const hasUnsavedChanges = computed(() => {
+  return isInit.value && Boolean(editorInitialState.value) && editorInitialState.value !== getEditorState();
+});
 const localPreviewTypeBadges = computed(() => {
   const types = localPreviewSummary.value?.types || {};
   return Object.entries(types)
@@ -915,6 +938,13 @@ watch(
   (newCode) => {
     form.content = newCode;
     localPreviewSummary.value = null;
+  }
+);
+watch(
+  () => form.icon,
+  () => {
+    iconLoadFailed.value = false;
+    iconFieldError.value = "";
   }
 );
 
@@ -937,6 +967,7 @@ watchEffect(() => {
     }
     // 标记 加载完成
     isInit.value = true;
+    captureEditorState();
     return;
   }
 
@@ -1038,6 +1069,7 @@ watchEffect(() => {
   }
   // 标记 加载完成
   isInit.value = true;
+  captureEditorState();
   return;
 });
 
@@ -1291,7 +1323,17 @@ const handlePassThroughUAChange = (val) => {
   }
 };
 
-const submit = () => {
+const isIconUrlAllowed = (value: string) => {
+  const text = String(value || "").trim();
+  if (!text) return true;
+  return /^https:\/\//i.test(text) || /^data:image\//i.test(text);
+};
+const validateIconField = () => {
+  iconFieldError.value = isIconUrlAllowed(form.icon) ? "" : t("editorPage.subConfig.basic.icon.invalid");
+  return !iconFieldError.value;
+};
+
+const submit = async () => {
   if (isget.value) {
     showNotify({
       type: "success",
@@ -1299,11 +1341,11 @@ const submit = () => {
     });
     return;
   }
-  ruleForm.value.validate().then(async ({ valid, errors }: any) => {
-    isget.value = true;
-    // 如果验证失败
+
+  isget.value = true;
+  try {
+    const { valid, errors }: any = await ruleForm.value.validate();
     if (!valid) {
-      isget.value = false;
       focusValidationErrorTab(errors);
       Dialog({
         title: t(`editorPage.subConfig.pop.errorTitle`),
@@ -1316,18 +1358,20 @@ const submit = () => {
       });
       return;
     }
+    if (!validateIconField()) {
+      showNotify({ type: "danger", title: iconFieldError.value });
+      return;
+    }
+
     Toast.loading(t("editorPage.subConfig.basic.content.validation.submitLoading"), {
       id: "submits",
       cover: true,
       duration: 1500,
     });
-    // 如果验证成功，开始保存/修改
     const data: any = JSON.parse(JSON.stringify(toRaw(form)));
     if (editType === "subs" && data.source === "local") {
       const isValidLocalContent = await validateLocalContent(localContentText.value, { notify: true });
       if (!isValidLocalContent) {
-        isget.value = false;
-        Toast.hide("submits");
         focusValidationErrorTab([{ prop: "content" }]);
         return;
       }
@@ -1373,18 +1417,25 @@ const submit = () => {
       }
     }
 
-    if (res?.data?.status === "success") {
-      router.replace("/").then(() => {
-        if (res)
-          showNotify({
-            type: "success",
-            title: t(`editorPage.subConfig.pop.succeedMsg`),
-          });
-      });
+    if (res?.data?.status !== "success") {
+      throw new Error(res?.data?.error?.message || t("editorPage.subConfig.pop.saveFailed"));
     }
+    captureEditorState();
+    await router.replace("/");
+    showNotify({
+      type: "success",
+      title: t(`editorPage.subConfig.pop.succeedMsg`),
+    });
+  } catch (error) {
+    showNotify({
+      type: "danger",
+      title: t("editorPage.subConfig.pop.saveFailed"),
+      content: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
     isget.value = false;
     Toast.hide("submits");
-  });
+  }
 };
 
 // 名称验证器
@@ -1429,7 +1480,7 @@ const urlValidator = (val: string): Promise<boolean> => {
   }
   // 图标
   const subIcon = computed(() => {
-    if (form.icon) {
+    if (form.icon && !iconLoadFailed.value) {
       return form.icon
     } else {
       return appearanceSetting.value.isDefaultIcon ? logoIcon : logoRedIcon
@@ -1762,12 +1813,61 @@ const handleEditGlobalClick = () => {
     }
   }
 }
+
+const navigationPromptOpen = ref(false);
+const navigationUnlocked = ref(false);
+onBeforeRouteLeave((to) => {
+  if (navigationUnlocked.value) return true;
+  if (!hasUnsavedChanges.value || to.path === route.path) return true;
+  if (navigationPromptOpen.value) return false;
+  navigationPromptOpen.value = true;
+  Dialog({
+    title: t("editorPage.subConfig.pop.leaveConfirmTitle"),
+    content: t("editorPage.subConfig.pop.leaveContent"),
+    popClass: "auto-dialog",
+    okText: t("editorPage.subConfig.pop.leaveConfirm"),
+    cancelText: t("editorPage.subConfig.pop.leaveCancel"),
+    closeOnClickOverlay: false,
+    onOk: () => {
+      navigationPromptOpen.value = false;
+      navigationUnlocked.value = true;
+      router.push(to.fullPath);
+    },
+    onCancel: () => {
+      navigationPromptOpen.value = false;
+    },
+  });
+  return false;
+});
+
+const onBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges.value) return;
+  event.preventDefault();
+  event.returnValue = "";
+};
+
+onMounted(() => {
+  window.addEventListener("beforeunload", onBeforeUnload);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", onBeforeUnload);
+});
 </script>
 
 <style lang="scss" scoped>
 .page-wrapper {
   padding: 0 var(--safe-area-side) calc(v-bind("padding") + 63px)
     var(--safe-area-side);
+
+  .field-error {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    color: #d93025;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: right;
+  }
 
   :deep(.nut-cell-group__warp) {
     border-radius: var(--item-card-radios);

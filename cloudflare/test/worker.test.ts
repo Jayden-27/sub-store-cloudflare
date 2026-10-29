@@ -83,6 +83,20 @@ describe("Worker and D1 integration", () => {
     expect(getPath(await jsonObject(invalid), "error", "message")).toContain("Unknown script");
   });
 
+  it("returns 422 when a source has no compatible nodes", async () => {
+    const source = await workerRequest("/api/sources", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "empty-node-source", name: "Empty", type: "local", content: "not-a-proxy" }),
+    });
+    expect(source.status).toBe(200);
+
+    const download = await workerRequest(`/download/source/empty-node-source/json/${DOWNLOAD_TOKEN}`, {}, false);
+    expect(download.status).toBe(422);
+
+    await workerRequest("/api/sources/empty-node-source", { method: "DELETE" });
+  });
+
   it("hardens the download-only host boundary", async () => {
     const response = await workerExports.default.fetch(new Request("https://downloads.example.com/"));
     expect(response.status).toBe(404);
@@ -389,6 +403,64 @@ describe("Worker and D1 integration", () => {
     const entryId = String(getPath(entry, "id"));
     expect((await workerRequest(`/api/recycle-bin/${entryId}/restore`, { method: "POST" })).status).toBe(200);
     expect((await workerRequest("/api/sources/recycled-source")).status).toBe(200);
+  });
+
+  it("validates sing-box templates and serves them in downloads", async () => {
+    const invalid = await workerRequest("/api/templates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "invalid-sb", name: "Invalid SB", target: "sing-box", content: JSON.stringify({ outbounds: {} }) }),
+    });
+    expect(invalid.status).toBe(400);
+
+    const source = await workerRequest("/api/sources", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "sb-api-source",
+        name: "SB API Source",
+        type: "local",
+        content: "trojan://password@example.com:443?sni=example.com#API%20Node",
+      }),
+    });
+    expect(source.status).toBe(200);
+
+    const template = await workerRequest("/api/templates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "sb-api-template",
+        name: "SB API Template",
+        target: "sing-box",
+        content: JSON.stringify({
+          dns: { servers: [{ tag: "dns-remote", address: "https://1.1.1.1/dns-query" }] },
+          route: { final: "PROXY", rules: [{ action: "sniff" }] },
+        }),
+      }),
+    });
+    expect(template.status).toBe(200);
+
+    const collection = await workerRequest("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "sb-api-collection", name: "SB API", sourceIds: ["sb-api-source"], templateId: "sb-api-template" }),
+    });
+    expect(collection.status).toBe(200);
+
+    const download = await workerRequest(`/download/collection/sb-api-collection/sing-box/${DOWNLOAD_TOKEN}`, {}, false);
+    expect(download.status).toBe(200);
+    const body = await jsonObject(download);
+    const dns = getPath(body, "dns") as { servers?: Array<{ tag?: string }> } | undefined;
+    expect(dns?.servers?.[0]?.tag).toBe("dns-remote");
+    const outbounds = getPath(body, "outbounds") as Array<Record<string, unknown>> | undefined;
+    expect(outbounds?.map((item) => item.tag)).toContain("API Node");
+
+    const referenced = await workerRequest("/api/templates/sb-api-template", { method: "DELETE" });
+    expect(referenced.status).toBe(409);
+
+    await workerRequest("/api/collections/sb-api-collection", { method: "DELETE" });
+    await workerRequest("/api/templates/sb-api-template", { method: "DELETE" });
+    await workerRequest("/api/sources/sb-api-source", { method: "DELETE" });
   });
 });
 
