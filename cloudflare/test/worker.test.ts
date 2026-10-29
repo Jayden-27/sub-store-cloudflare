@@ -104,6 +104,19 @@ describe("Worker and D1 integration", () => {
     expect(previewData.groups.find((group) => group.id === "hk")).toMatchObject({ total: 2, duplicates: 1 });
     expect(previewData.groups.find((group) => group.id === "fr")).toMatchObject({ total: 1, duplicates: 0 });
 
+    const unknownPreview = await workerRequest("/api/import/preview", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        content: "trojan://password@203.0.113.9:443?sni=example.net#Mystery%20Node",
+        groupByRegion: true,
+      }),
+    });
+    expect(unknownPreview.status).toBe(200);
+    const unknownGroup = (getPath(await jsonObject(unknownPreview), "data", "groups") as Array<Record<string, unknown>>)
+      .find((group) => group.id === "other");
+    expect(unknownGroup).toMatchObject({ needsReview: true, total: 1 });
+
     const applyPayload = {
       content,
       groupByRegion: false,

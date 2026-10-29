@@ -52,11 +52,17 @@
         </p>
         <p class="target-note">{{ t('subPage.smartImport.targetNote') }}</p>
         <div class="group-list">
-          <div v-for="group in groupRows" :key="group.id" class="group-row" :class="{ disabled: !group.enabled }">
+          <div
+            v-for="group in groupRows"
+            :key="group.id"
+            class="group-row"
+            :class="{ disabled: !group.enabled, 'needs-review': group.needsReview }"
+          >
             <label class="group-enable">
               <input v-model="group.enabled" type="checkbox" />
               <span>{{ group.label }}</span>
             </label>
+            <p v-if="group.needsReview" class="review-hint">{{ t('subPage.smartImport.needsReview') }}</p>
             <div class="group-content">
               <div class="group-counts">
                 <span>{{ t('subPage.smartImport.groupTotal', { count: group.total }) }}</span>
@@ -66,6 +72,7 @@
               <label class="target-field">
                 <span>{{ t('subPage.smartImport.targetLabel') }}</span>
                 <select v-model="group.targetSourceId" :disabled="!group.enabled">
+                  <option v-if="group.needsReview" value="" disabled>{{ t('subPage.smartImport.selectTarget') }}</option>
                   <option :value="group.newSourceId">{{ t('subPage.smartImport.createTarget', { name: group.newSourceName }) }}</option>
                   <option v-for="source in localSources" :key="source.value" :value="source.value">
                     {{ t('subPage.smartImport.existingTarget', { name: source.label }) }}
@@ -107,6 +114,7 @@ type ImportGroupRow = {
   addable: number;
   duplicates: number;
   samples: string[];
+  needsReview: boolean;
   newSourceId: string;
   newSourceName: string;
   targetSourceId: string;
@@ -143,7 +151,13 @@ const popupStyle = computed(() => ({
   maxWidth: '94vw',
   height: isWideScreen.value ? '84vh' : '92vh',
 }));
-const canApply = computed(() => groupRows.some((group) => group.enabled) && !parsing.value && !applying.value);
+const canApply = computed(() => {
+  const enabled = groupRows.filter((group) => group.enabled);
+  return enabled.length > 0
+    && enabled.every((group) => Boolean(group.targetSourceId))
+    && !parsing.value
+    && !applying.value;
+});
 
 const onVisibleChange = (visible: boolean) => {
   emit('update:visible', visible);
@@ -210,9 +224,12 @@ const parsePreview = async () => {
       addable: Number(group.addable || 0),
       duplicates: Number(group.duplicates || 0),
       samples: Array.isArray(group.samples) ? group.samples.map(String) : [],
+      needsReview: Boolean(group.needsReview),
       newSourceId: String(group.newSourceId || group.targetSourceId),
       newSourceName: String(group.newSourceName || group.targetSourceName),
-      targetSourceId: String(group.existingSource ? group.targetSourceId : group.newSourceId || group.targetSourceId),
+      targetSourceId: group.needsReview
+        ? ''
+        : String(group.existingSource ? group.targetSourceId : group.newSourceId || group.targetSourceId),
       enabled: true,
     }));
     groupRows.splice(0, groupRows.length, ...rows);
@@ -227,6 +244,10 @@ const applyImport = async () => {
   const selected = groupRows.filter((group) => group.enabled);
   if (selected.length === 0) {
     errorMessage.value = t('subPage.smartImport.noSelection');
+    return;
+  }
+  if (selected.some((group) => !group.targetSourceId)) {
+    errorMessage.value = t('subPage.smartImport.selectTargetFirst');
     return;
   }
   applying.value = true;
@@ -392,6 +413,17 @@ watch(
   &.disabled {
     opacity: 0.5;
   }
+
+  &.needs-review {
+    border-color: color-mix(in srgb, var(--primary-color) 34%, var(--divider-color));
+  }
+}
+
+.review-hint {
+  margin: 4px 0 0 22px;
+  color: var(--primary-color);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .group-enable {

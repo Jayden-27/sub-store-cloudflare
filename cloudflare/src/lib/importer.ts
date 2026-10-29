@@ -17,6 +17,7 @@ type ImportGroup = RegionDefinition & {
   duplicates: number;
   addable: number;
   samples: string[];
+  needsReview: boolean;
   nodes: ProxyNode[];
   targetSource?: SourceRecord;
   createTarget: boolean;
@@ -64,14 +65,26 @@ const KNOWN_REGIONS: Record<string, RegionDefinition> = {
   KR: { id: "kr", label: "🇰🇷 韩国", sourceName: "KR" },
 };
 
-function regionFromName(name: string): RegionDefinition {
-  const flag = detectImportedRegionFlag(name);
-  const code = flagToCode(flag);
-  if (!code) return { id: "other", label: "其他", sourceName: "其他" };
+function regionFromNode(node: ProxyNode): RegionDefinition {
+  const nameFlag = detectImportedRegionFlag(node.name);
+  const nameCode = flagToCode(nameFlag);
+  if (nameCode) return regionFromCode(nameFlag, nameCode);
+  const endpoint = [node.server, node.servername, node.sni].filter(Boolean).join(" ");
+  const endpointFlag = detectImportedRegionFlag(endpoint);
+  const endpointCode = flagToCode(endpointFlag);
+  if (endpointCode) return regionFromCode(endpointFlag, endpointCode);
+  return { id: "other", label: "待确认地区", sourceName: "其他" };
+}
+
+function regionFromCode(flag: string, code: string): RegionDefinition {
   const known = KNOWN_REGIONS[code];
   if (known) return known;
-  const id = code.toLowerCase();
-  return { id, label: `${flag} ${code}`, sourceName: code, icon: undefined };
+  return {
+    id: code.toLowerCase(),
+    label: `${flag} ${code}`,
+    sourceName: code,
+    icon: undefined,
+  };
 }
 
 function flagToCode(flag: string) {
@@ -135,7 +148,7 @@ function groupNodes(nodes: ProxyNode[], groupByRegion: boolean) {
   }
   const output = new Map<string, { definition: RegionDefinition; nodes: ProxyNode[] }>();
   for (const node of nodes) {
-    const definition = regionFromName(node.name);
+    const definition = regionFromNode(node);
     const group = output.get(definition.id) || { definition, nodes: [] };
     group.nodes.push(node);
     output.set(definition.id, group);
@@ -169,6 +182,7 @@ function buildImportGroups(nodes: ProxyNode[], sources: SourceRecord[], groupByR
       duplicates,
       addable: addableNodes.length,
       samples: groupNodes.slice(0, SAMPLE_LIMIT).map((node) => node.name),
+      needsReview: definition.id === "other",
       nodes: groupNodes,
       targetSource: existing ? sources.find((source) => source.id === target.id) : undefined,
       createTarget: !existing,
@@ -201,6 +215,7 @@ export function previewProxyImport(content: string, sources: SourceRecord[], gro
       duplicates: group.duplicates,
       addable: group.addable,
       samples: group.samples,
+      needsReview: group.needsReview,
       targetSourceId: group.target.id,
       targetSourceName: group.target.name,
       existingSource: !group.createTarget,

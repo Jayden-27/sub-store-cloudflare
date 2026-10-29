@@ -13,6 +13,7 @@ This project follows semantic versioning where practical.
 - Added resource dropdowns and inline validation for scoped share links and request settings.
 - Added a build-time client-fingerprint operator for supported TLS proxy nodes.
 - Added smart node import for URI, Base64, Mihomo YAML, and JSON content with region preview, duplicate detection, and transactional source merging.
+- Smart import now infers regions from flags, names, and endpoint labels, and requires manual target selection for unrecognized regions.
 
 ### Changed
 
