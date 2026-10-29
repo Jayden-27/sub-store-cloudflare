@@ -8,7 +8,8 @@ The frontend in frontend/ is a trimmed Cloudflare-native edition based on the
 original Sub-Store frontend experience and remains accompanied by
 frontend/LICENSE.
 
-Upstream projects:
+Upstream projects and prior work:
 
 - https://github.com/sub-store-org/Sub-Store
 - https://github.com/sub-store-org/Sub-Store-Front-End
+- https://github.com/realchendahuang/sub-store-cloudflare

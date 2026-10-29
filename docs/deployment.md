@@ -15,7 +15,7 @@
 README 顶部的按钮：
 
 ```md
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/realchendahuang/sub-store-cloudflare)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Jayden-27/sub-store-cloudflare)
 ```
 
 Cloudflare 会读取根目录 [../wrangler.jsonc](../wrangler.jsonc)，自动 provision D1，并用根目录 `package.json` 的 `build` / `deploy` 脚本构建部署。
@@ -45,7 +45,7 @@ https://<worker>.<workers-subdomain>.workers.dev/?token=<admin-token>
 
 按钮部署的定位是“最快跑起来”。它不会读取你的本地 `config/agent-setup.local.json`，也不会把订阅源写进 GitHub。
 
-注意：Cloudflare 官方按钮会把仓库导入到用户自己的 GitHub/GitLab 账号，并可能为这个副本配置 Workers Builds。这个行为属于 Cloudflare 的模板部署体验，不代表本上游仓库使用 GitHub Actions、Dependabot 或 GitHub CI/CD。
+注意：Cloudflare 官方按钮会把仓库导入到用户自己的 GitHub/GitLab 账号，并可能为这个副本配置 Workers Builds。这个行为属于 Cloudflare 的模板部署体验，不代表本仓库使用 GitHub Actions、Dependabot 或 GitHub CI/CD。
 
 ## 2. Agent / CLI 一键安装
 

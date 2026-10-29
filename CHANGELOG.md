@@ -6,6 +6,29 @@ This project follows semantic versioning where practical.
 
 ## [Unreleased]
 
+### Added
+
+- Added sing-box routing templates with target isolation and deep outbound merging.
+- Added unsaved-change guards, route-leave protection, and accessible keyboard and focus handling for dialogs and primary actions.
+- Added resource dropdowns and inline validation for scoped share links and request settings.
+- Added a build-time client-fingerprint operator for supported TLS proxy nodes.
+
+### Changed
+
+- Preserved template top-level field order in generated Mihomo YAML.
+- Aligned the default UI layout at an 800px centered desktop width and refined template editing dialogs.
+- Improved download error classification with explicit 422, 502, and 504 responses.
+
+### Fixed
+
+- Prevented deletion of templates that are still referenced by collections.
+- Restored default icons, fixed CSP blocking for HTTPS icons, and improved icon repository validation.
+- Added restore previews and clearer empty, loading, and failure states.
+
+### Documentation
+
+- Reorganized the README as an independent project homepage and aligned repository links and package metadata with the standalone repository.
+
 ## [1.1.0] - 2026-07-11
 
 ### Added

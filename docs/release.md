@@ -9,7 +9,7 @@ Run the release checks locally, commit directly to `main`, tag the release, then
 
 - `main` is the release branch.
 - Maintainer releases are prepared directly on `main`.
-- Contributors can still open pull requests, but must paste local validation output because the upstream repository does not run GitHub CI.
+- Contributors can still open pull requests, but must paste local validation output because this repository does not run GitHub CI.
 - Do not add GitHub Actions, Dependabot, or release automation unless the maintainer explicitly changes this policy.
 
 ## 1. Verify

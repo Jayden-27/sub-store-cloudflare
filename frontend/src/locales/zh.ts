@@ -220,7 +220,7 @@ export default {
         cancel: "取消",
         desc: "下载链接可选择输出格式，也支持临时 url/content/ua 参数",
         title: "订阅链接参数",
-        content: "https://github.com/realchendahuang/sub-store-cloudflare#%E9%83%A8%E7%BD%B2"
+        content: "https://github.com/Jayden-27/sub-store-cloudflare#%E9%83%A8%E7%BD%B2"
       }
     },
     sort: {

@@ -226,7 +226,7 @@
           <router-link to="/edit/subs/UNTITLED" class="onboarding-action">
             <nut-button type="primary">{{ $t('subPage.onboarding.createSource') }}</nut-button>
           </router-link>
-          <a href="https://github.com/realchendahuang/sub-store-cloudflare/blob/main/docs/quick-start.md" target="_blank" rel="noreferrer">
+          <a href="https://github.com/Jayden-27/sub-store-cloudflare/blob/main/docs/quick-start.md" target="_blank" rel="noreferrer">
             {{ $t('subPage.onboarding.openGuide') }}
           </a>
         </div>
@@ -268,7 +268,7 @@
           {{ $t(`subPage.loadFailed.btn`) }}
         </nut-button>
         <a
-          href="https://github.com/realchendahuang/sub-store-cloudflare/blob/main/docs/deployment.md"
+          href="https://github.com/Jayden-27/sub-store-cloudflare/blob/main/docs/deployment.md"
           target="_blank"
           rel="noreferrer"
         >

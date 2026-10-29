@@ -14,15 +14,15 @@
 
 ## Deploy Button 仓库副本
 
-Cloudflare 导入的仓库副本不会自动合并本上游仓库的新提交。
+Cloudflare 导入的仓库副本不会自动合并本发布仓库的新提交。
 
-把你的副本克隆到本地后，添加上游：
+把你的副本克隆到本地后，添加发布仓库：
 
 ```bash
 git clone https://github.com/<你的账号>/<你的仓库>.git
 cd <你的仓库>
-git remote add upstream https://github.com/realchendahuang/sub-store-cloudflare.git
-git fetch upstream --tags
+git remote add release https://github.com/Jayden-27/sub-store-cloudflare.git
+git fetch release --tags
 ```
 
 升级前创建本地备份分支：
@@ -32,17 +32,17 @@ git checkout main
 git branch backup/pre-upgrade-v1.1.0
 ```
 
-如果副本没有自己的代码修改，可以快进到上游主线：
+如果副本没有自己的代码修改，可以快进到发布主线：
 
 ```bash
-git merge --ff-only upstream/main
+git merge --ff-only release/main
 git push origin main
 ```
 
 如果你修改过代码，使用普通 merge 并处理冲突：
 
 ```bash
-git merge upstream/main
+git merge release/main
 git push origin main
 ```
 

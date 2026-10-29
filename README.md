@@ -1,140 +1,146 @@
-# Sub-Store Cloudflare
+<div align="center">
+  <img src="docs/assets/logo.png" width="96" alt="Sub-Store Cloudflare logo" />
+  <h1>Sub-Store Cloudflare</h1>
+  <p>在 Cloudflare Workers 上聚合订阅、处理节点并生成客户端配置。</p>
 
-[![Release](https://img.shields.io/github/v/release/realchendahuang/sub-store-cloudflare?include_prereleases&sort=semver)](https://github.com/realchendahuang/sub-store-cloudflare/releases)
-[![License: AGPL-3.0](https://img.shields.io/github/license/realchendahuang/sub-store-cloudflare)](LICENSE)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
-[![D1](https://img.shields.io/badge/Storage-D1-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/d1/)
-[![Workers Free](https://img.shields.io/badge/Designed_for-Workers_Free-2F7DFF)](docs/upstream-compatibility.md)
+  [![Release](https://img.shields.io/github/v/release/Jayden-27/sub-store-cloudflare?include_prereleases&sort=semver)](https://github.com/Jayden-27/sub-store-cloudflare/releases)
+  [![License: AGPL-3.0](https://img.shields.io/github/license/Jayden-27/sub-store-cloudflare)](LICENSE)
+  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
+  [![D1](https://img.shields.io/badge/Storage-D1-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/d1/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/realchendahuang/sub-store-cloudflare)
+  [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Jayden-27/sub-store-cloudflare)
 
-把机场订阅、自建节点、节点处理和分流模板放到你自己的 Cloudflare Worker 中，最终只给客户端一个订阅链接。
+  [中文](README.md) · [English](README.en.md)
+</div>
 
-项目采用 Workers Static Assets + Worker API + D1 + Worker Secrets，按 Cloudflare 免费版边界设计并验证。无需自建服务器，也不需要 KV、R2、Durable Objects、Queues 或 Cron。
+## 项目定位
 
-English: [README.en.md](README.en.md)
+Sub-Store Cloudflare 是一个独立维护、面向 Cloudflare 免费版的订阅管理服务。它把远程订阅和本地节点统一到一套处理链路中，在 Worker 内完成过滤、重命名、去重、排序和规则模板渲染，最后为不同客户端提供独立下载链接。
 
-## 最快部署：三步完成
+架构保持精简：
 
-### 1. 准备两个不同的随机 Token
+- Workers Static Assets 提供管理界面
+- Worker API 处理业务请求
+- D1 保存订阅源、组合、模板和设置
+- Worker Secrets 保存管理端与下载端 Token
+- 不依赖 KV、R2、Durable Objects、Queues 或 Cron
 
-使用密码管理器生成，或者在安装了 Node.js 的电脑运行：
+## 主要能力
+
+- 远程订阅、本地节点和组合订阅
+- 区域、协议、正则、去重、排序、域名解析等节点处理
+- 构建时 JavaScript Filter / Operator，不执行来自 D1 或网络的运行时脚本
+- Mihomo、Stash、Surge、Surge Mac、Surfboard、Loon、Egern、Shadowrocket、Quantumult X、sing-box、V2Ray、URI 和 JSON 输出
+- Mihomo / Stash / sing-box 规则模板，支持模板字段透传与动态节点合并
+- 一次性节点、订阅和规则转换工具
+- 可撤销、可过期、可限制输出格式的独立分享链接
+- 配置备份、恢复和最多 50 条的回收站
+- 订阅流量元数据透传、边缘缓存和失败回退
+
+## 数据流
+
+```mermaid
+flowchart LR
+  A[远程订阅 / 本地节点] --> B[解析与过滤]
+  B --> C[节点操作]
+  C --> D[组合订阅]
+  D --> E[规则模板]
+  E --> F[Mihomo / sing-box / Surge / ...]
+```
+
+## 快速部署
+
+### 1. 生成两个不同的 Token
 
 ```bash
 node --input-type=module -e "import{randomBytes}from'node:crypto';console.log(randomBytes(32).toString('base64url'));console.log(randomBytes(32).toString('base64url'))"
 ```
 
-第一行用于 `SUB_STORE_ADMIN_TOKEN`，第二行用于 `SUB_STORE_PUBLIC_DOWNLOAD_TOKEN`。不要使用 README、截图或示例里的固定字符串。
+分别用于 `SUB_STORE_ADMIN_TOKEN` 和 `SUB_STORE_PUBLIC_DOWNLOAD_TOKEN`，不要复用同一个值。
 
-### 2. 点击 Deploy to Cloudflare
+### 2. 部署到 Cloudflare
 
-点击上面的按钮。Cloudflare 会：
-
-- 把仓库导入到你的 GitHub/GitLab 账号；
-- 创建 Worker；
-- 自动创建或选择 D1 数据库；
-- 要求你填写两个 Token；
-- 执行 `pnpm run build` 和 `pnpm run deploy`。
-
-两个 Secret 输入框必须填写你刚生成的不同随机值。
+点击顶部 **Deploy to Cloudflare**。Cloudflare 会导入仓库副本、创建 Worker、配置 D1，并要求填写两个 Secret。
 
 ### 3. 打开管理页面
 
-部署成功后点击 Cloudflare 给出的 Worker 地址，并在地址后添加：
-
 ```text
-/?token=<SUB_STORE_ADMIN_TOKEN>
+https://<你的 Worker 域名>/?token=<SUB_STORE_ADMIN_TOKEN>
 ```
 
-首次进入会显示三步引导：添加 Source → 确认默认 Daily → 复制订阅链接。
+首次进入后添加订阅源，检查组合订阅，然后复制客户端下载链接。
 
-完整图文步骤见 [五分钟快速开始](docs/quick-start.md)。
+完整步骤见 [五分钟快速开始](docs/quick-start.md)。
 
-## 选择哪种安装方式
+## 安装方式
 
-| 你的情况 | 推荐方式 | 入口 |
+| 场景 | 方式 | 入口 |
 | --- | --- | --- |
-| 只想最快跑起来，之后在网页配置 | Deploy to Cloudflare | README 顶部按钮 |
-| 想在终端按提示完成部署 | 交互式 CLI | `pnpm run install:cloudflare` |
-| 想先部署空应用，之后在网页配置 | CLI 快速模式 | `pnpm run install:quick` |
-| 想让 Codex / Claude Code 导入订阅并返回链接 | Agent 安装 | [复制安装提示词](agent/install.prompt.md) |
-| 想完全控制 D1、Secret 和域名 | 手动 Wrangler | [部署说明](docs/deployment.md) |
+| 最快部署，之后在网页配置 | Deploy to Cloudflare | README 顶部按钮 |
+| 通过终端完成部署与导入 | 交互式 CLI | `pnpm run install:cloudflare` |
+| 部署空应用 | CLI 快速模式 | `pnpm run install:quick` |
+| 让本地 AI Agent 导入订阅并返回链接 | Agent 安装 | [安装提示词](agent/install.prompt.md) |
+| 完全控制 D1、Secret 和域名 | 手动 Wrangler | [部署说明](docs/deployment.md) |
 
-### 交互式 CLI
-
-需要 Git、Node.js 22+ 和 Corepack：
+### 本地 CLI 部署
 
 ```bash
-git clone https://github.com/realchendahuang/sub-store-cloudflare.git
+git clone https://github.com/Jayden-27/sub-store-cloudflare.git
 cd sub-store-cloudflare
 corepack enable
 pnpm run install:cloudflare
 ```
 
-安装器会询问 Worker 名称、自定义域名和可选订阅 URL，然后自动安装依赖、登录检查、创建 D1、生成 Token、迁移、部署、导入并验证。
-
-只想部署空应用：
+只部署空应用：
 
 ```bash
 pnpm run install:quick
 ```
 
-需要单独生成两个跨平台 Token：
+## 模板与输出
 
-```bash
-pnpm run tokens:generate
+- `mihomo` / `stash`：YAML，保留模板中的运行、DNS、sniffer、TUN 等顶层配置。
+- `sing-box`：JSON，与运行时出站配置按 `tag` 深度合并。
+- 模板只作用于匹配的输出目标，不同客户端之间不会互相套用。
+- 代理组支持 `include-all` 与 `$all`；使用 `$all` 可在生成时按源顺序展开节点。
+- 一个组合订阅绑定一个模板；需要多套客户端配置时创建多个组合。
+
+## 安全设计
+
+- 管理端和 `/api/*` 使用 admin token，`/download/*` 使用独立的 download token。
+- 下载链接支持过期、停用和输出格式限制。
+- 构建时脚本来自仓库清单，不从 D1、浏览器或远程 URL 动态加载 JavaScript。
+- 建议将 Mihomo `external-controller` 限制在 `127.0.0.1`，不要在无认证时暴露到局域网。
+- 不要提交订阅 URL、节点 URI、Token、私有 D1 ID 或生成的 seed SQL。
+
+更多内容见 [SECURITY.md](SECURITY.md)。
+
+## 项目结构
+
+```text
+.
+├── cloudflare/        Worker API、D1 访问层、渲染与测试
+├── frontend/          Vue 3 管理界面
+├── config/            模板、预设和构建时脚本
+├── scripts/           安装、校验、生成与发布工具
+├── docs/              部署、架构、兼容性和排障文档
+├── agent/             AI Agent 安装入口
+└── wrangler.jsonc     Workers 与 Static Assets 配置
 ```
 
-### AI Agent 安装
-
-把 [agent/install.prompt.md](agent/install.prompt.md) 的提示词发给 Codex、Claude Code 或其他本地编程 Agent。Agent 会把私有配置写入被 Git 忽略的 `config/agent-setup.local.json`，再运行同一个安装器。
-
-非交互环境缺少该配置时，安装器会停止而不是部署示例订阅 URL。
-
-## 部署后的五分钟
-
-1. 在“订阅”页添加远程订阅 URL 或本地节点文本。
-2. 确认预置的 `Daily` Collection；需要其他组合时再新建，模板可选 `acl4ssr-mihomo`。
-3. 保守起步只使用清理信息节点、端点去重和名称排序。
-4. 在 Collection 卡片复制 Mihomo、sing-box、Surge 等链接。
-5. 在“设置”页导出一次配置备份，并妥善保存两个 Token。
-
-## 主要能力
-
-- 远程订阅、本地节点、组合订阅和自定义模板。
-- 区域、类型和正则过滤，重命名、删除、去重、排序、域名解析和旗帜处理。
-- 构建时 JavaScript Filter / Operator；不使用运行时 `eval()`。
-- JSON/JSON5、Mihomo YAML、URI、Surge/Loon/Quantumult X 等输入。
-- Mihomo、Stash、Surge、Surge Mac、Surfboard、Loon、Egern、Shadowrocket、Quantumult X、sing-box、v2ray、URI 和 JSON 输出。
-- 一次性节点/订阅转换和规则转换工具。
-- 独立、限时、可撤销、可限制格式的下载授权。
-- 最多 50 条的配置回收站。
-- 订阅元数据透传、Workers Cache API 缓存和失败回退。
-- 配置备份/恢复以及节点地区、组织和 ASN 查询。
-
-原版兼容状态和明确排除项见 [兼容矩阵](docs/upstream-compatibility.md)。
-
-## 升级
-
-Deploy Button 会在你的账号中创建仓库副本，但不会自动合并本仓库的新版本。不要通过新建第二套 Worker/D1 来代替正常升级。
-
-不同安装方式的升级、D1 migration、备份和回滚步骤见 [升级指南](docs/upgrading.md)。
-
-## 常用文档
+## 文档
 
 - [五分钟快速开始](docs/quick-start.md)
 - [部署说明](docs/deployment.md)
 - [升级指南](docs/upgrading.md)
-- [AI Agent 安装](docs/ai-agent-install.md)
+- [架构说明](docs/architecture.md)
 - [JavaScript Filter / Operator](docs/script-plugins.md)
-- [原版兼容矩阵](docs/upstream-compatibility.md)
+- [兼容矩阵](docs/upstream-compatibility.md)
 - [产品边界](docs/product-scope.md)
 - [故障排查](docs/troubleshooting.md)
-- [架构说明](docs/architecture.md)
 - [测试与发布检查](docs/testing.md)
-- [变更记录](CHANGELOG.md)
-
-全部文档见 [docs/README.md](docs/README.md)。
+- [全部文档](docs/README.md)
 
 ## 本地开发
 
@@ -146,21 +152,22 @@ pnpm run build:frontend
 pnpm run dev
 ```
 
-访问：
+打开 `http://localhost:8787/?token=dev-admin-token`。
 
-```text
-http://localhost:8787/?token=dev-admin-token
+常用检查：
+
+```bash
+pnpm run check
+pnpm run check:tests
+pnpm run deploy:local:dry-run
 ```
-
-## 隐私与安全
-
-- 不要提交订阅 URL、节点 URI、Token、私有 D1 ID 或生成的 seed SQL。
-- 管理端和 `/api/*` 使用 admin token；`/download/*` 使用 download token。
-- 项目不会从网页、D1 或远程 URL 动态执行任意 JavaScript。
-- 发布或提 issue 前请先看 [SECURITY.md](SECURITY.md) 和 [故障排查](docs/troubleshooting.md)。
 
 ## 致谢与许可
 
-本项目参考并致敬 [sub-store-org/Sub-Store](https://github.com/sub-store-org/Sub-Store)。原版覆盖更广的运行环境和功能；本仓库专注可直接部署的 Cloudflare-native 兼容版本。
+产品思路和前端体验受 [Sub-Store](https://github.com/sub-store-org/Sub-Store) 与
+[Sub-Store-Front-End](https://github.com/sub-store-org/Sub-Store-Front-End) 启发。
+Cloudflare-native 基础最初来自
+[realchendahuang/sub-store-cloudflare](https://github.com/realchendahuang/sub-store-cloudflare)；
+当前仓库独立维护，不再处于原仓库的 fork 网络中。
 
-见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。
+本项目使用 [AGPL-3.0-or-later](LICENSE) 许可，第三方来源说明见 [NOTICE](NOTICE)。
