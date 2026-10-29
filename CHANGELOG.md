@@ -12,6 +12,7 @@ This project follows semantic versioning where practical.
 - Added unsaved-change guards, route-leave protection, and accessible keyboard and focus handling for dialogs and primary actions.
 - Added resource dropdowns and inline validation for scoped share links and request settings.
 - Added a build-time client-fingerprint operator for supported TLS proxy nodes.
+- Added smart node import for URI, Base64, Mihomo YAML, and JSON content with region preview, duplicate detection, and transactional source merging.
 
 ### Changed
 

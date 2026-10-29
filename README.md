@@ -34,6 +34,7 @@ Sub-Store Cloudflare 是一个独立维护、面向 Cloudflare 免费版的订�
 - Mihomo、Stash、Surge、Surge Mac、Surfboard、Loon、Egern、Shadowrocket、Quantumult X、sing-box、V2Ray、URI 和 JSON 输出
 - Mihomo / Stash / sing-box 规则模板，支持模板字段透传与动态节点合并
 - 一次性节点、订阅和规则转换工具
+- 智能导入 URI、Base64、Mihomo YAML 和 JSON 节点，按地区预览后合并到现有订阅源
 - 可撤销、可过期、可限制输出格式的独立分享链接
 - 配置备份、恢复和最多 50 条的回收站
 - 订阅流量元数据透传、边缘缓存和失败回退

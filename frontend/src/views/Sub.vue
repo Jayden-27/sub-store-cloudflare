@@ -24,21 +24,15 @@
         <div class="title-btn">
           <p class="add-sub-panel-title">{{ $t(`subPage.addSubTitle`) }}</p>
           <p class="add-sub-panel-title or">{{ $t(`specificWord.or`) }}</p>
-          <input ref="fileInput" type="file" accept="application/json,text/json,.json" style="display: none" @change="fileChange">
           <nut-button
             class="upload-btn"
             plain
             type="primary"
             size="small"
-            :disabled="restoreIsLoading"
-            :loading="restoreIsLoading"
-            @click="upload()"
+            @click="openSmartImport"
           >
-            <font-awesome-icon
-              v-if="!uploadIsLoading"
-              icon="fa-solid fa-file-import"
-            />
-            {{ $t(`subPage.import.label`) }}
+            <font-awesome-icon icon="fa-solid fa-file-import" />
+            {{ $t(`subPage.smartImport.entry`) }}
           </nut-button>
           <nut-icon name="tips" @click="importTips"></nut-icon>
         </div>
@@ -58,6 +52,7 @@
         </ul>
       </nut-popup>
     </div>
+    <SmartImportPopup v-model:visible="smartImportVisible" @imported="onSmartImported" />
     <!-- 浮动按钮 -->
     <Teleport to="body">
       <div v-if="hasSubs || hasCollections" class="drag-btn-wrapper">
@@ -290,6 +285,7 @@ import draggable from "vuedraggable";
 
 import { useCloudflareApi } from "@/api/app";
 import logoRedIcon from "@/assets/icons/logo-red.png";
+import SmartImportPopup from "@/components/SmartImportPopup.vue";
 import SubListItem from "@/components/SubListItem.vue";
 import { useFilteredDraggableList } from "@/hooks/useFilteredDraggableList";
 import { useListViewMode } from "@/hooks/useListViewMode";
@@ -308,9 +304,7 @@ import { isMobile } from "@/utils/isMobile";
 const { showNotify } = useAppNotifyStore();
 const cloudflareApi = useCloudflareApi();
 const { t } = useI18n();
-const fileInput = ref(null);
-const uploadIsLoading = ref(false);
-const restoreIsLoading = ref(false);
+const smartImportVisible = ref(false);
 const addSubBtnIsVisible = ref(false);
 const adminToken = ref(getStoredAdminToken());
 // const isSubFold = ref(localStorage.getItem('sub-fold') === '1');
@@ -581,56 +575,15 @@ const shouldShowElement = (element) => {
 };
 const filteredSubs = useFilteredDraggableList(subs, shouldShowElement);
 const filteredCollections = useFilteredDraggableList(collections, shouldShowElement);
-const upload = async() => {
-  try {
-    fileInput.value.click();
-  } catch (e) {
-    console.error(e);
-  }
+const openSmartImport = () => {
+  addSubBtnIsVisible.value = false;
+  smartImportVisible.value = true;
 };
 
-const fileChange = async (event) => {
-  const file = event.target.files[0];
-  if(!file) return;
-  try {
-    restoreIsLoading.value = true;
-    const reader = new FileReader();
-    reader.readAsText(file);
-    reader.onload = async () => {
-      const item = JSON.parse(String(reader.result));
-      const suffix = new Date().getTime();
-      item.name += `_${suffix}`;
-      item.displayName += `_${suffix}`;
-      item['display-name'] = item.displayName;
-      const res = await cloudflareApi.createItem(item.subscriptions ? 'collections' : 'subs', item);
-      // await subsStore.fetchSubsData();
-      
-      if (res?.data?.status === "success") {
-        await initStores(false, true, true);
-        showNotify({
-          type: "success",
-          title: t(`subPage.import.succeed`),
-        });
-        addSubBtnIsVisible.value = false;
-      } else {
-        throw new Error('restore failed');
-      }
-    };
-
-    reader.onerror = e => {
-      throw e;
-    };
-    
-  } catch (e) {
-    showNotify({
-      type: "danger",
-      title: t(`subPage.import.failed`, { e: e.message ?? e }),
-    });
-    console.error(e);
-  } finally {
-    restoreIsLoading.value = false;
-  }
+const onSmartImported = async () => {
+  await initStores(false, true, true);
 };
+
 const importTips = () => {
   addSubBtnIsVisible.value = false;
   Dialog({

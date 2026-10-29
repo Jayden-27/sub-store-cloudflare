@@ -552,6 +552,16 @@ export function useCloudflareApi() {
         method: 'get',
       }).then(response => adaptResponseData(response, data => fromApiPayload('subs', data)));
     },
+    previewNodeImport: (data: any): AxiosPromise<MyAxiosRes> => request({
+      url: '/api/import/preview',
+      method: 'post',
+      data,
+    }),
+    applyNodeImport: (data: any): AxiosPromise<MyAxiosRes> => request({
+      url: '/api/import/apply',
+      method: 'post',
+      data,
+    }),
     getCollections: (): AxiosPromise<MyAxiosRes> => {
       return request({
         url: `/api/collections`,

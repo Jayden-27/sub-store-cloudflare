@@ -38,6 +38,7 @@ import {
   upsertSource,
   upsertTemplate,
 } from "../lib/store";
+import { applyProxyImport, previewProxyImport } from "../lib/importer";
 import { convertSubscriptionContent, normalizeTargetAlias, previewSourceContent, previewSubscription } from "../lib/subscription";
 import type {
   CollectionRecord,
@@ -369,6 +370,40 @@ apiRoutes.post("/utils/node-info", async (c) => {
     });
   } catch (error) {
     return failed(c, error instanceof Error ? error.message : String(error), 502);
+  }
+});
+
+apiRoutes.post("/import/preview", async (c) => {
+  const input: JsonMap = await c.req.json<JsonMap>().catch(() => ({}));
+  const content = stringValue(input.content);
+  if (!content) return failed(c, "Import content is required", 400);
+  try {
+    return success(c, previewProxyImport(content, await listSources(c.env), input.groupByRegion !== false));
+  } catch (error) {
+    return failed(c, error instanceof Error ? error.message : String(error), 400);
+  }
+});
+
+apiRoutes.post("/import/apply", async (c) => {
+  const input: JsonMap = await c.req.json<JsonMap>().catch(() => ({}));
+  const content = stringValue(input.content);
+  if (!content) return failed(c, "Import content is required", 400);
+  const groups = Array.isArray(input.groups) ? input.groups : [];
+  try {
+    return success(c, await applyProxyImport(
+      c.env,
+      content,
+      await listSources(c.env),
+      input.groupByRegion !== false,
+      groups.map((group) => ({
+        id: stringValue((group as JsonMap).id),
+        enabled: (group as JsonMap).enabled !== false,
+        targetSourceId: stringValue((group as JsonMap).targetSourceId),
+        targetSourceName: stringValue((group as JsonMap).targetSourceName),
+      })),
+    ));
+  } catch (error) {
+    return failed(c, error instanceof Error ? error.message : String(error), 400);
   }
 });
 

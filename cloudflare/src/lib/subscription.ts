@@ -400,6 +400,10 @@ function parseProxies(raw: string): ProxyNode[] {
   return parseProxyLines(text);
 }
 
+export function parseImportedProxyNodes(raw: string): ProxyNode[] {
+  return parseProxies(decodeMaybeBase64(raw));
+}
+
 function addPreviewIds(proxies: ProxyNode[]) {
   return proxies.map((proxy, index) => ({
     id: stableProxyId(proxy, index),
@@ -1445,6 +1449,11 @@ function isUsefulProxy(proxy: ProxyNode) {
 
 function isAscii(input: string) {
   return /^[\x00-\x7F]+$/.test(input);
+}
+
+export function detectImportedRegionFlag(name: string) {
+  const explicit = String(name || "").match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)?.[0];
+  return explicit || detectFlag(String(name || ""));
 }
 
 function detectFlag(name: string) {

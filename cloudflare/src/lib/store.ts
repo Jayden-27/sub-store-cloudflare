@@ -132,6 +132,35 @@ export async function upsertSource(env: SubStoreEnv, input: Partial<SourceRecord
   return source;
 }
 
+export async function upsertSourcesBatch(env: SubStoreEnv, sources: SourceRecord[]) {
+  if (sources.length === 0) return sources;
+  await env.DB.batch(sources.map((source) => env.DB.prepare(
+    `INSERT INTO sources (id, name, type, url, content, enabled, filters_json, meta_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       type = excluded.type,
+       url = excluded.url,
+       content = excluded.content,
+       enabled = excluded.enabled,
+       filters_json = excluded.filters_json,
+       meta_json = excluded.meta_json,
+       updated_at = excluded.updated_at`,
+  ).bind(
+    source.id,
+    source.name,
+    source.type,
+    source.url,
+    source.content,
+    boolInt(source.enabled),
+    JSON.stringify(source.filters),
+    JSON.stringify(source.meta),
+    source.createdAt,
+    source.updatedAt,
+  )));
+  return sources;
+}
+
 export async function getSource(env: SubStoreEnv, id: string) {
   const row = await env.DB.prepare("SELECT * FROM sources WHERE id = ?").bind(id).first<SourceRow>();
   return row ? sourceFromRow(row) : undefined;

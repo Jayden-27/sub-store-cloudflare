@@ -34,6 +34,7 @@ The architecture stays intentionally small:
 - Mihomo, Stash, Surge, Surge Mac, Surfboard, Loon, Egern, Shadowrocket, Quantumult X, sing-box, V2Ray, URI, and JSON output
 - Mihomo / Stash / sing-box routing templates with generated-node merging
 - One-shot proxy, subscription, and rule conversion tools
+- Smart import for URI, Base64, Mihomo YAML, and JSON nodes with region preview and source merging
 - Revocable, expiring, target-scoped download links
 - Backup, restore, and a bounded 50-entry recycle bin
 - Subscription metadata propagation, edge caching, and stale-cache fallback

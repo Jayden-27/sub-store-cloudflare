@@ -83,6 +83,56 @@ describe("Worker and D1 integration", () => {
     expect(getPath(await jsonObject(invalid), "error", "message")).toContain("Unknown script");
   });
 
+  it("previews and imports node content with region grouping and dedupe", async () => {
+    const content = [
+      "trojan://password@hk.import.example.com:443?sni=hk.import.example.com#🇭🇰%20HK%20Node",
+      "trojan://password@fr.import.example.com:443?sni=fr.import.example.com#🇫🇷%20FR%20Node",
+      "trojan://password@hk.import.example.com:443?sni=hk.import.example.com#HK%20Duplicate",
+    ].join("\n");
+
+    const preview = await workerRequest("/api/import/preview", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content, groupByRegion: true }),
+    });
+    expect(preview.status).toBe(200);
+    const previewData = getPath(await jsonObject(preview), "data") as {
+      total: number;
+      groups: Array<{ id: string; total: number; duplicates: number }>;
+    };
+    expect(previewData.total).toBe(3);
+    expect(previewData.groups.find((group) => group.id === "hk")).toMatchObject({ total: 2, duplicates: 1 });
+    expect(previewData.groups.find((group) => group.id === "fr")).toMatchObject({ total: 1, duplicates: 0 });
+
+    const applyPayload = {
+      content,
+      groupByRegion: false,
+      groups: [{ id: "all", targetSourceId: "import-test-source", targetSourceName: "Import Test" }],
+    };
+    const applied = await workerRequest("/api/import/apply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(applyPayload),
+    });
+    expect(applied.status).toBe(200);
+    expect(getPath(await jsonObject(applied), "data", "added")).toBe(2);
+
+    const source = await workerRequest("/api/sources/import-test-source");
+    const sourceContent = String(getPath(await jsonObject(source), "data", "content") || "");
+    expect(sourceContent).toContain("HK Node");
+    expect(sourceContent).toContain("FR Node");
+
+    const repeated = await workerRequest("/api/import/apply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(applyPayload),
+    });
+    expect(repeated.status).toBe(200);
+    expect(getPath(await jsonObject(repeated), "data", "added")).toBe(0);
+
+    await workerRequest("/api/sources/import-test-source", { method: "DELETE" });
+  });
+
   it("returns 422 when a source has no compatible nodes", async () => {
     const source = await workerRequest("/api/sources", {
       method: "POST",
