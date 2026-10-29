@@ -61,30 +61,12 @@
         </nut-radiogroup>
       </div>
     </template>
-    <template v-if="type === 'Flag Operator' && foNewVersion && value === 'add'">
-      <div class="radio-wrapper options-radio">
-        <p class="des-label flag-operator" @click="showTwTips">
-            <span>{{ $t(`editorPage.subConfig.nodeActions['${type}'].twWhenPrefix`) }}</span>
-            <img :src="tw" alt="">
-            <span>{{ $t(`editorPage.subConfig.nodeActions['${type}'].twWhenSuffix`) }}</span>
-            <nut-icon name="tips" size="12px"></nut-icon>
-        </p>
-        <nut-radiogroup direction="horizontal" v-model="foTw">
-          <nut-radio v-for="(key, index) in foTwOpt" :label="key" :key="index"
-            >{{
-              $t(`editorPage.subConfig.nodeActions['${type}'].twOptions[${index}]`)
-            }}
-          </nut-radio>
-        </nut-radiogroup>
-      </div>
-    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-  import { Toast, Dialog } from "@nutui/nutui";
+  import { Dialog } from "@nutui/nutui";
   import { inject, onMounted, ref, watch } from 'vue';
-  import tw from '@/assets/icons/tw.png';
   import { useI18n } from 'vue-i18n';
 
   const { t } = useI18n();
@@ -107,15 +89,12 @@
   const normalizeResolveProvider = (provider) =>
     supportedResolveProviders.includes(provider) ? provider : 'Cloudflare';
 
-  const foTwOpt = ['cn', 'ws', 'tw'];
   const rdoTypeOpt = ['IPv4', 'IPv6'];
   const rdoFilterOpt = ['disabled', 'removeFailed', 'IPOnly', 'IPv4Only', 'IPv6Only'];
 
   const value = ref();
   const rdoNewVersion = ref(true);
-  const foNewVersion = ref(true);
 
-  const foTw = ref('cn');
   const rdoType = ref('IPv4');
   const rdoFilter = ref('disabled');
   const rdoCache = ref('disabled');
@@ -132,9 +111,6 @@
     return `${value ?? ''}`.trim();
   };
 
-  const showTwTips = () => {
-    Toast.text(t("editorPage.subConfig.nodeActions['Flag Operator'].disclaimer"));
-  };
   const rdoTypeInfo = () => {
     Dialog({
       title: t("editorPage.subConfig.nodeActions['Resolve Domain Operator'].ip4pTitle"),
@@ -163,7 +139,6 @@
       switch (type) {
         case 'Flag Operator':
           value.value = item.args?.mode ?? 'add';
-          foTw.value = item.args?.tw ?? 'cn';
           break;
         case 'Sort Operator':
           value.value = item.args ?? 'asc';
@@ -185,13 +160,13 @@
   });
 
   // 值变化时实时修改 form 的数据
-  watch([value, rdoFilter, rdoCache, rdoUrl, rdoEdns, rdoConcurrency, rdoType, foTw], () => {
+  watch([value, rdoFilter, rdoCache, rdoUrl, rdoEdns, rdoConcurrency, rdoType], () => {
     const item = form.process.find(item => item.id === id);
     switch (type) {
       case 'Flag Operator':
         item.args = {
           mode: value.value,
-          tw: foTw.value,
+          tw: item.args?.tw || 'cn',
         };
         break;
       case 'Sort Operator':
@@ -218,18 +193,6 @@
     font-size: 12px;
     margin-bottom: 8px;
     color: var(--comment-text-color);
-    &.flag-operator {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      img {
-        width: 14px;
-        height: 14px;
-      }
-      span {
-        margin: 0 4px;
-      }
-    }
   }
 
   .nut-radiogroup {

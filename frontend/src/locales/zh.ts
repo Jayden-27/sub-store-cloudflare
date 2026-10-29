@@ -79,9 +79,15 @@ export default {
       title: "独立分享链接",
       desc: "为单个订阅源或组合创建可撤销、可过期、可限制格式的下载链接。Token 只在创建时显示。",
       resourceType: "资源类型",
-      resourceId: "资源 ID",
-      target: "限制输出格式，可留空",
-      expires: "有效小时数，0 表示不过期",
+      resourceId: "资源",
+      source: "订阅源",
+      collection: "组合订阅",
+      resourcePlaceholder: "选择资源",
+      noResources: "暂无可选资源",
+      targetLabel: "输出格式",
+      autoTarget: "自动",
+      expiresLabel: "有效期",
+      expiresHint: "小时，0 = 永久",
       create: "创建链接",
       empty: "还没有独立分享链接",
       disable: "停用",
@@ -479,16 +485,8 @@ export default {
             "添加",
             "移除"
           ],
-          twOptions: [
-            "替换为 🇨🇳",
-            "替换为 🇼🇸",
-            "保持不变"
-          ],
           tipsTitle: "旗帜操作提示",
-          tipsDes: "为节点添加或者移除旗帜\n\n免责声明: 旗帜 指 Emoji 旗帜, 不包含任何政治意味",
-          twWhenPrefix: "识别为",
-          twWhenSuffix: "时",
-          disclaimer: "免责声明: 本操作仅将 Emoji 旗帜进行替换以便于显示, 不包含任何政治意味"
+          tipsDes: "为节点添加或者移除旗帜\n\n免责声明: 旗帜 指 Emoji 旗帜, 不包含任何政治意味"
         },
         "Sort Operator": {
           label: "节点排序",

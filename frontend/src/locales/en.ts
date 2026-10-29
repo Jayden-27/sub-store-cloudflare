@@ -79,9 +79,15 @@ export default {
       title: "Scoped share links",
       desc: "Create revocable and expiring links restricted to one source or collection and optional output target. Tokens are shown only once.",
       resourceType: "Resource type",
-      resourceId: "Resource ID",
-      target: "Optional output restriction",
-      expires: "Lifetime in hours; 0 never expires",
+      resourceId: "Resource",
+      source: "Source",
+      collection: "Collection",
+      resourcePlaceholder: "Select a resource",
+      noResources: "No resources available",
+      targetLabel: "Output",
+      autoTarget: "Auto",
+      expiresLabel: "Validity",
+      expiresHint: "hours, 0 = never",
       create: "Create link",
       empty: "No scoped links",
       disable: "Disable",
@@ -479,16 +485,8 @@ export default {
             "Add Flag",
             "Remove Flag"
           ],
-          twOptions: [
-            "⇒ 🇨🇳",
-            "⇒ 🇼🇸",
-            "Unchanged"
-          ],
           tipsTitle: "flags Tips",
-          tipsDes: "Flag operation instructions",
-          twWhenPrefix: "When detected as",
-          twWhenSuffix: "",
-          disclaimer: "Disclaimer: this action only replaces emoji flags for display and has no political meaning."
+          tipsDes: "Flag operation instructions"
         },
         "Sort Operator": {
           label: "Node Sort",

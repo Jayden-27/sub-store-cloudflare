@@ -282,6 +282,52 @@ describe("subscription parsing and limits", () => {
     expect(output).toContain("MATCH,DIRECT");
   });
 
+  it("preserves template top-level order in mihomo output", async () => {
+    const output = await buildSubscription({
+      source: {
+        id: "order-source",
+        name: "Order Source",
+        type: "local",
+        url: "",
+        content: "trojan://password@example.com:443?sni=example.com#Order%20Node",
+      },
+      sources: [],
+      requestUrl: new URL("https://example.com/download/source/order-source/mihomo"),
+      target: "mihomo",
+      template: {
+        id: "order-template",
+        name: "Order Template",
+        target: "mihomo",
+        config: {
+          mode: "rule",
+          "log-level": "info",
+          ipv6: true,
+          "allow-lan": true,
+          "mixed-port": 7890,
+          "external-controller": ":9090",
+          "proxy-groups": [{ name: "Proxy", type: "select", "include-all": true }],
+          "rule-providers": {},
+          rules: ["MATCH,Proxy"],
+        },
+      },
+    });
+    const topLevelKeys = output.split("\n")
+      .filter((line) => /^[a-z][a-z0-9-]*:/.test(line))
+      .map((line) => line.slice(0, line.indexOf(":")));
+    expect(topLevelKeys).toEqual([
+      "proxies",
+      "mode",
+      "log-level",
+      "ipv6",
+      "allow-lan",
+      "mixed-port",
+      "external-controller",
+      "proxy-groups",
+      "rule-providers",
+      "rules",
+    ]);
+  });
+
   it("keeps templates isolated by target", async () => {
     const source = {
       id: "iso-source",

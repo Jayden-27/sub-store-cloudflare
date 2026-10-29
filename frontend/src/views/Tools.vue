@@ -25,18 +25,40 @@
       <h2>{{ t('toolsPage.shares.title') }}</h2>
       <p>{{ t('toolsPage.shares.desc') }}</p>
       <div class="row share-form">
-        <select v-model="shareForm.resourceType">
-          <option value="source">source</option>
-          <option value="collection">collection</option>
-        </select>
-        <input v-model.trim="shareForm.resourceId" :placeholder="t('toolsPage.shares.resourceId')" />
-        <select v-model="shareForm.target">
-          <option value="">auto</option>
-          <option v-for="target in proxyTargets" :key="target" :value="target">{{ target }}</option>
-        </select>
-        <input v-model="shareForm.expiresHours" type="number" min="0" max="8760" :placeholder="t('toolsPage.shares.expires')" />
+        <label class="share-field share-field--type">
+          <span class="share-field-label">{{ t('toolsPage.shares.resourceType') }}</span>
+          <select v-model="shareForm.resourceType" @change="handleShareResourceTypeChange">
+            <option value="source">{{ t('toolsPage.shares.source') }}</option>
+            <option value="collection">{{ t('toolsPage.shares.collection') }}</option>
+          </select>
+        </label>
+        <label class="share-field share-field--resource">
+          <span class="share-field-label">{{ t('toolsPage.shares.resourceId') }}</span>
+          <select v-model="shareForm.resourceId" :disabled="shareResourceOptions.length === 0">
+            <option value="" disabled hidden>
+              {{ shareResourceOptions.length > 0 ? t('toolsPage.shares.resourcePlaceholder') : t('toolsPage.shares.noResources') }}
+            </option>
+            <option v-for="option in shareResourceOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+        <label class="share-field share-field--target">
+          <span class="share-field-label">{{ t('toolsPage.shares.targetLabel') }}</span>
+          <select v-model="shareForm.target">
+            <option value="">{{ t('toolsPage.shares.autoTarget') }}</option>
+            <option v-for="target in proxyTargets" :key="target" :value="target">{{ target }}</option>
+          </select>
+        </label>
+        <label class="share-field share-field--expiry">
+          <span class="share-field-label">
+            {{ t('toolsPage.shares.expiresLabel') }}
+            <small>{{ t('toolsPage.shares.expiresHint') }}</small>
+          </span>
+          <input v-model="shareForm.expiresHours" type="number" min="0" max="8760" placeholder="0" />
+        </label>
       </div>
-      <nut-button type="primary" :loading="shareCreating" @click="createShare">{{ t('toolsPage.shares.create') }}</nut-button>
+      <nut-button type="primary" :loading="shareCreating" :disabled="!shareForm.resourceId" @click="createShare">{{ t('toolsPage.shares.create') }}</nut-button>
       <div v-if="createdShareUrl" class="created-link" @click="copyText(createdShareUrl)">{{ createdShareUrl }}</div>
       <p v-if="shares.length === 0" class="empty">{{ t('toolsPage.shares.empty') }}</p>
       <div v-for="share in shares" :key="share.id" class="list-item">
@@ -91,7 +113,40 @@ const recycleEntries = ref<any[]>([]);
 const shareCreating = ref(false);
 const createdShareUrl = ref('');
 const shareForm = reactive({ resourceType: 'source', resourceId: '', target: '', expiresHours: '0' });
+const shareResources = reactive({
+  source: [] as Array<{ value: string; label: string }>,
+  collection: [] as Array<{ value: string; label: string }>,
+});
+const shareResourceOptions = computed(() => shareResources[shareForm.resourceType as 'source' | 'collection']);
 const conversionTargets = computed(() => conversionKind.value === 'proxy' ? proxyTargets : ruleTargets);
+
+const toShareResourceOptions = (items: any[]) => {
+  const resources = items.map((item) => {
+    const id = String(item.name || item.id || '');
+    const displayName = String(item.displayName || id);
+    return { value: id, displayName };
+  }).filter((item) => item.value);
+  const nameCounts = resources.reduce<Record<string, number>>((counts, item) => {
+    counts[item.displayName] = (counts[item.displayName] || 0) + 1;
+    return counts;
+  }, {});
+  return resources.map((item) => ({
+    value: item.value,
+    label: nameCounts[item.displayName] > 1 ? `${item.displayName}（${item.value}）` : item.displayName,
+  }));
+};
+
+const loadShareResources = async () => {
+  const [sourceResponse, collectionResponse] = await Promise.all([api.getSources(), api.getCollections()]);
+  const sourceData = (sourceResponse?.data as any)?.data;
+  const collectionData = (collectionResponse?.data as any)?.data;
+  shareResources.source = Array.isArray(sourceData) ? toShareResourceOptions(sourceData) : [];
+  shareResources.collection = Array.isArray(collectionData) ? toShareResourceOptions(collectionData) : [];
+};
+
+const handleShareResourceTypeChange = () => {
+  shareForm.resourceId = '';
+};
 
 const runConversion = async () => {
   converting.value = true;
@@ -146,7 +201,7 @@ const purgeEntry = async (id: string) => { await api.deleteRecycleEntry(id); awa
 const copyText = async (value: string) => { await navigator.clipboard.writeText(value); showNotify({ type: 'success', title: t('toolsPage.notify.copied') }); };
 const notifyError = (error: unknown) => showNotify({ type: 'danger', title: t('toolsPage.notify.failed', { e: error instanceof Error ? error.message : String(error) }) });
 
-onMounted(() => Promise.all([loadShares(), loadRecycle()]));
+onMounted(() => Promise.all([loadShares(), loadRecycle(), loadShareResources()]));
 </script>
 
 <style lang="scss" scoped>
@@ -159,12 +214,20 @@ select, input, textarea { box-sizing: border-box; border: 1px solid var(--divide
 select, input { min-height: 38px; padding: 0 10px; }
 textarea { width: 100%; min-height: 150px; padding: 10px; resize: vertical; font-family: monospace; }
 .actions { display: flex; gap: 8px; margin: 8px 0; }
-.share-form { flex-wrap: wrap; }
-.share-form input { flex: 1; min-width: 150px; }
+.share-form { flex-wrap: wrap; align-items: flex-end; row-gap: 10px; }
+.share-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.share-field select, .share-field input { width: 100%; }
+.share-field--type { flex: 0 0 120px; }
+.share-field--resource { flex: 1 1 220px; }
+.share-field--target { flex: 0 0 150px; }
+.share-field--expiry { flex: 0 0 190px; }
+.share-field-label { display: flex; align-items: baseline; gap: 6px; color: var(--comment-text-color); font-size: 12px; }
+.share-field-label small { font-size: 11px; color: var(--comment-text-color); }
 .created-link { margin: 10px 0; padding: 10px; border-radius: 8px; background: var(--background-color); overflow-wrap: anywhere; cursor: copy; font-size: 12px; }
 .list-item { min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--divider-color); }
 .list-item div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .list-item strong { color: var(--primary-text-color); font-size: 13px; overflow-wrap: anywhere; }
 .list-item small, .stats, .empty { color: var(--comment-text-color); }
+@media (max-width: 720px) { .share-form { flex-direction: column; align-items: stretch; } .share-field { flex-basis: auto; } }
 @media (max-width: 520px) { .row { flex-direction: column; } .list-item { align-items: flex-start; flex-direction: column; padding: 10px 0; } }
 </style>

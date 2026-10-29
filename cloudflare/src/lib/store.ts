@@ -578,18 +578,29 @@ function parseConfig(value: unknown, target: SubscriptionTarget = "mihomo") {
 }
 
 function normalizeMihomoTemplateConfig(input: JsonObject) {
-  const output: JsonObject = { ...input };
-  copyAlias(output, "mixed-port", "mixedPort");
-  copyAlias(output, "allow-lan", "allowLan");
-  copyAlias(output, "log-level", "logLevel");
-  copyAlias(output, "proxy-groups", "proxyGroups");
-  copyAlias(output, "rule-providers", "ruleProviders");
+  const aliases: Record<string, string> = {
+    "mixed-port": "mixedPort",
+    "allow-lan": "allowLan",
+    "log-level": "logLevel",
+    "proxy-groups": "proxyGroups",
+    "rule-providers": "ruleProviders",
+  };
+  const values: JsonObject = {
+    mixedPort: input.mixedPort ?? input["mixed-port"],
+    allowLan: input.allowLan ?? input["allow-lan"],
+    logLevel: input.logLevel ?? input["log-level"],
+    proxyGroups: input.proxyGroups ?? input["proxy-groups"],
+    ruleProviders: input.ruleProviders ?? input["rule-providers"],
+  };
+  const seen = new Set<string>();
+  const output: JsonObject = {};
+  for (const [key, value] of Object.entries(input)) {
+    const normalizedKey = aliases[key] || key;
+    if (seen.has(normalizedKey)) continue;
+    seen.add(normalizedKey);
+    output[normalizedKey] = values[normalizedKey] ?? value;
+  }
   return output;
-}
-
-function copyAlias(input: JsonObject, from: string, to: string) {
-  if (input[to] === undefined && input[from] !== undefined) input[to] = input[from];
-  delete input[from];
 }
 
 function normalizeMeta(input: unknown, fallback: unknown = {}): Record<string, unknown> {

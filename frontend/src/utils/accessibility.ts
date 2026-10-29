@@ -76,8 +76,8 @@ export const installAccessibilityEnhancements = () => {
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (popup) {
       requestAnimationFrame(() => {
-        const first = focusableElements(popup)[0];
-        first?.focus();
+        const target = popup.querySelector<HTMLElement>("[data-dialog-focus]") || focusableElements(popup)[0];
+        target?.focus({ preventScroll: true });
       });
     }
   };

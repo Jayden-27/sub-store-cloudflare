@@ -148,7 +148,14 @@
       closeable
       @update:visible="onTemplateVisibleChange"
     >
-      <div class="template-import-panel">
+      <div
+        class="template-import-panel"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="templateDialogTitle"
+        tabindex="-1"
+        data-dialog-focus
+      >
         <h2>{{ templateDialogTitle }}</h2>
         <div class="template-form">
           <div class="template-form__row">
@@ -165,13 +172,17 @@
           </div>
           <div class="template-form__row">
             <span class="template-form__label">{{ t("myPage.templates.nameLabel") }}</span>
-            <nut-input
-              class="template-form__input"
-              v-model.trim="templateForm.name"
-              :border="false"
-              :placeholder="t('myPage.templates.namePlaceholder')"
-              input-align="right"
-            />
+            <div class="template-form__input-wrap">
+              <nut-input
+                class="template-form__input"
+                v-model.trim="templateForm.name"
+                :border="false"
+                :placeholder="t('myPage.templates.namePlaceholder')"
+                input-align="right"
+                :aria-label="t('myPage.templates.nameLabel')"
+              />
+              <span class="template-form__edit-icon" aria-hidden="true">✎</span>
+            </div>
           </div>
           <div class="template-form__row" :class="{ 'is-clickable': !isWideScreen }" @click="!isWideScreen && openTemplateTargetPicker()">
             <span class="template-form__label">{{ t("myPage.templates.target") }}</span>
@@ -839,6 +850,8 @@ onBeforeUnmount(() => {
 }
 
 .template-import-panel {
+  outline: none;
+
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -930,18 +943,35 @@ onBeforeUnmount(() => {
   }
 }
 
+.template-form__input-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 2px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--divider-color);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    border-bottom-color: var(--second-text-color);
+  }
+
+  &:focus-within {
+    border-bottom-color: var(--primary-color);
+    box-shadow: 0 1px 0 var(--primary-color);
+  }
+}
+
 .template-form__input {
   flex: 1;
   min-width: 0;
   min-height: 34px;
-  padding: 0 10px;
-  background: var(--background-color);
-  border-radius: 8px;
-  transition: box-shadow 0.2s ease;
-
-  &:focus-within {
-    box-shadow: 0 0 0 1px var(--primary-color) inset;
-  }
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 
   :deep(.nut-input__value),
   :deep(.nut-input__value input) {
@@ -950,6 +980,23 @@ onBeforeUnmount(() => {
     background-color: transparent;
     box-shadow: none;
     border-radius: 0;
+  }
+}
+
+.template-form__edit-icon {
+  flex: 0 0 auto;
+  color: var(--comment-text-color);
+  font-size: 11px;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+@media screen and (min-width: 768px) {
+  .template-form__input-wrap {
+    flex: 0 1 340px;
+    width: 340px;
+    max-width: 48%;
+    margin-left: auto;
   }
 }
 
