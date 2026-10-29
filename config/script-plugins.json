@@ -22,6 +22,36 @@
       ]
     },
     {
+      "id": "client-fingerprint",
+      "name": "Client Fingerprint",
+      "nameZh": "客户端 TLS 指纹",
+      "description": "Set client-fingerprint on supported TLS proxy nodes that do not already define one.",
+      "descriptionZh": "为尚未设置指纹的受支持 TLS 节点补充 client-fingerprint。",
+      "kind": "operator",
+      "compatibility": "free",
+      "entry": "script-plugins/client-fingerprint.js",
+      "parameters": [
+        {
+          "key": "fingerprint",
+          "label": "Fingerprint",
+          "labelZh": "指纹",
+          "type": "string",
+          "required": true,
+          "default": "chrome",
+          "placeholder": "chrome"
+        },
+        {
+          "key": "protocols",
+          "label": "Protocols",
+          "labelZh": "协议",
+          "type": "string",
+          "required": false,
+          "default": "vmess,vless,trojan,anytls",
+          "placeholder": "vmess,vless,trojan,anytls"
+        }
+      ]
+    },
+    {
       "id": "name-regex-filter",
       "name": "Name Regex Filter",
       "nameZh": "节点名正则过滤",
