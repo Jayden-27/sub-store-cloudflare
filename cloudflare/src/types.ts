@@ -50,6 +50,10 @@ export type SubscriptionSource = {
   filters?: FilterRule[];
   enabled?: boolean;
   meta?: Record<string, unknown>;
+  lastFetchedAt?: number;
+  lastError?: string;
+  lastNodeCount?: number;
+  lastCacheStatus?: string;
 };
 
 export type SubscriptionCollection = {
@@ -143,6 +147,12 @@ export type RecycleBinRecord = {
   deletedAt: number;
 };
 
+export type SourceFetchResult = {
+  nodeCount?: number;
+  error?: string;
+  cacheStatus?: string;
+};
+
 export type SourceRecord = {
   id: string;
   name: string;
@@ -154,6 +164,10 @@ export type SourceRecord = {
   meta: Record<string, unknown>;
   createdAt: number;
   updatedAt: number;
+  lastFetchedAt?: number;
+  lastError?: string;
+  lastNodeCount?: number;
+  lastCacheStatus?: string;
 };
 
 export type CollectionRecord = {
@@ -176,6 +190,10 @@ export type TemplateRecord = {
   config: RoutingTemplateConfig;
   createdAt: number;
   updatedAt: number;
+  remoteUrl?: string;
+  syncedConfigHash?: string;
+  lastSyncedAt?: number;
+  syncError?: string;
 };
 
 export type AppSettings = Record<string, unknown>;

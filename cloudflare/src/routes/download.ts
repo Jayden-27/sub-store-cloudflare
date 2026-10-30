@@ -3,8 +3,8 @@ import type { Context } from "hono";
 import { failed, isTokenValid } from "../lib/http";
 import { authorizeScopedDownload } from "../lib/compatibility-resources";
 import { SubscriptionBuildError, buildSubscriptionResult, getTargetContentType, normalizeTarget, normalizeTargetAlias } from "../lib/subscription";
-import { getRoutingTemplate, getSettings, getSource, getSubscriptionCollection, getSubscriptionSources } from "../lib/store";
-import type { SubscriptionCollection, SubscriptionSource, SubscriptionTarget } from "../types";
+import { getRoutingTemplate, getSettings, getSource, getSubscriptionCollection, getSubscriptionSources, getTemplate, pendingSourceStatusUpdates, recordSourceStatuses } from "../lib/store";
+import type { FilterRule, SourceFetchResult, SubscriptionCollection, SubscriptionSource, SubscriptionTarget } from "../types";
 
 export const downloadRoutes = new Hono<{ Bindings: SubStoreEnv }>();
 
@@ -16,14 +16,17 @@ downloadRoutes.get("/download/collection/:name/:target?/:token?", async (c) => {
   const invalidToken = await rejectInvalidDownloadToken(c, "collection", c.req.param("name"), target);
   if (invalidToken) return invalidToken;
 
+  const overrides = await resolveDownloadOverrides(c);
+  if (overrides.error) return overrides.error;
+
   const collection = await getSubscriptionCollection(c.env, c.req.param("name"));
   if (!collection) return failed(c, "Collection not found", 404);
 
   return renderDownload(c, {
-    collection,
+    collection: overrides.filters ? { ...collection, filters: overrides.filters } : collection,
     sources: await getSubscriptionSources(c.env),
     target,
-    templateId: collection.templateId,
+    templateId: overrides.templateId || collection.templateId,
   });
 });
 
@@ -33,6 +36,9 @@ downloadRoutes.get("/download/source/:name/:target?/:token?", async (c) => {
   const invalidToken = await rejectInvalidDownloadToken(c, "source", c.req.param("name"), target);
   if (invalidToken) return invalidToken;
 
+  const overrides = await resolveDownloadOverrides(c);
+  if (overrides.error) return overrides.error;
+
   const source = await getSource(c.env, c.req.param("name"));
   if (!source || !source.enabled) return failed(c, "Subscription not found", 404);
   const subscriptionSource: SubscriptionSource = {
@@ -41,15 +47,20 @@ downloadRoutes.get("/download/source/:name/:target?/:token?", async (c) => {
     type: source.type,
     url: source.url,
     content: source.content,
-    filters: source.filters,
+    filters: overrides.filters || source.filters,
     enabled: source.enabled,
     meta: source.meta,
+    lastFetchedAt: source.lastFetchedAt,
+    lastError: source.lastError,
+    lastNodeCount: source.lastNodeCount,
+    lastCacheStatus: source.lastCacheStatus,
   };
 
   return renderDownload(c, {
     source: subscriptionSource,
     sources: [subscriptionSource],
     target,
+    templateId: overrides.templateId,
   });
 });
 
@@ -66,6 +77,7 @@ async function renderDownload(
   const sourceOverride = getTemporarySourceOverride(c);
   const sources = sourceOverride ? applyTemporarySourceOverride(options.sources, sourceOverride, options.collection) : options.sources;
   const source = sourceOverride && options.source ? applyTemporarySourceOverride([options.source], sourceOverride)[0] : options.source;
+  const sourceResults = new Map<string, SourceFetchResult>();
   const [template, settings] = await Promise.all([
     getRoutingTemplate(c.env, options.templateId),
     getSettings(c.env),
@@ -82,7 +94,9 @@ async function renderDownload(
       requestUserAgent: c.req.header("user-agent") || "",
       forceRefresh: ["1", "true"].includes(c.req.query("refresh") || c.req.query("noCache") || ""),
       waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+      sourceResults,
     });
+    recordSourceStatusesAsync(c, sources, sourceResults);
     const headers = new Headers({
       "content-type": getTargetContentType(options.target),
       "profile-update-interval": result.metadata.profileUpdateInterval || "6",
@@ -94,9 +108,39 @@ async function renderDownload(
     setResponseHeader(headers, "x-sub-store-cache", result.metadata.cacheStatus);
     return new Response(result.body, { headers });
   } catch (error) {
+    recordSourceStatusesAsync(c, sources, sourceResults);
     const message = error instanceof Error ? error.message : String(error);
     const status = error instanceof SubscriptionBuildError ? error.status : 500;
     return failed(c, message, status);
+  }
+}
+
+function recordSourceStatusesAsync(c: DownloadContext, sources: SubscriptionSource[], results: Map<string, SourceFetchResult>) {
+  const updates = pendingSourceStatusUpdates(sources, results);
+  if (updates.length === 0) return;
+  c.executionCtx.waitUntil(recordSourceStatuses(c.env, updates));
+}
+
+type DownloadOverrides = {
+  templateId?: string;
+  filters?: FilterRule[];
+  error?: Response;
+};
+
+async function resolveDownloadOverrides(c: DownloadContext): Promise<DownloadOverrides> {
+  const templateId = stringQuery(c, "template");
+  if (templateId && !(await getTemplate(c.env, templateId))) {
+    return { error: failed(c, "Template not found", 404) };
+  }
+  const rawFilters = stringQuery(c, "filters");
+  if (rawFilters === undefined) return { templateId };
+  if (rawFilters.toLowerCase() === "none") return { templateId, filters: [] };
+  try {
+    const parsed = JSON.parse(rawFilters);
+    if (!Array.isArray(parsed)) return { error: failed(c, "filters must be a JSON array or \"none\"", 400) };
+    return { templateId, filters: parsed as FilterRule[] };
+  } catch {
+    return { error: failed(c, "filters must be a JSON array or \"none\"", 400) };
   }
 }
 

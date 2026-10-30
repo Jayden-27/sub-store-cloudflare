@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { parse as parseYaml } from "yaml";
+import { parseTemplateConfig } from "../lib/template-config";
+import { fetchTemplateContent, resolveTemplateRemoteUrl } from "../lib/template-sync";
 import { failed, requireAdmin, success } from "../lib/http";
 import { BUILTIN_TEMPLATE_IDS } from "../lib/defaults";
 import { MAX_API_BODY_BYTES, MAX_FLOW_RESPONSE_BYTES } from "../lib/limits";
@@ -31,14 +32,18 @@ import {
   listCollections,
   listSources,
   listTemplates,
+  resetTemplateToBuiltin,
   sortCollections,
   sortSources,
+  syncDueTemplates,
+  syncTemplateFromRemote,
   updateSettings,
   upsertCollection,
   upsertSource,
   upsertTemplate,
 } from "../lib/store";
 import { applyProxyImport, previewProxyImport } from "../lib/importer";
+import { checkDownloadLink } from "../lib/link-check";
 import { convertSubscriptionContent, normalizeTargetAlias, previewSourceContent, previewSubscription } from "../lib/subscription";
 import type {
   CollectionRecord,
@@ -218,7 +223,7 @@ apiRoutes.delete("/collections/:name", async (c) => {
   return success(c, { deleted: true });
 });
 
-apiRoutes.get("/templates", async (c) => success(c, (await listTemplates(c.env)).map(toApiTemplate)));
+apiRoutes.get("/templates", async (c) => success(c, (await listTemplates(c.env)).map((template) => toApiTemplate(template, c.env))));
 apiRoutes.post("/templates", async (c) => {
   try {
     const input = await parseJsonOrText(c) as JsonMap;
@@ -226,7 +231,7 @@ apiRoutes.post("/templates", async (c) => {
     const template = fromApiTemplate(input);
     const configError = validateTemplateConfig(template.target, template.config);
     if (configError) return failed(c, configError, 400);
-    return success(c, toApiTemplate(await upsertTemplate(c.env, template)));
+    return success(c, toApiTemplate(await upsertTemplate(c.env, template), c.env));
   } catch (error) {
     return failed(c, error instanceof Error ? error.message : String(error), 400);
   }
@@ -234,7 +239,7 @@ apiRoutes.post("/templates", async (c) => {
 apiRoutes.get("/templates/:name", async (c) => {
   const template = await getTemplate(c.env, c.req.param("name"));
   if (!template) return failed(c, "Template not found", 404);
-  return success(c, toApiTemplate(template));
+  return success(c, toApiTemplate(template, c.env));
 });
 apiRoutes.patch("/templates/:name", async (c) => {
   try {
@@ -243,16 +248,44 @@ apiRoutes.patch("/templates/:name", async (c) => {
     const template = { ...fromApiTemplate(await parseJsonOrText(c) as JsonMap), id: existing.id };
     const configError = validateTemplateConfig(template.target, template.config);
     if (configError) return failed(c, configError, 400);
-    return success(c, toApiTemplate(await upsertTemplate(c.env, template)));
+    return success(c, toApiTemplate(await upsertTemplate(c.env, template), c.env));
   } catch (error) {
     return failed(c, error instanceof Error ? error.message : String(error), 400);
   }
+});
+apiRoutes.post("/templates/:name/reset", async (c) => {
+  const template = await resetTemplateToBuiltin(c.env, c.req.param("name"));
+  if (!template) return failed(c, "Template has no built-in default", 404);
+  return success(c, toApiTemplate(template, c.env));
+});
+apiRoutes.get("/templates/:name/source", async (c) => {
+  const template = await getTemplate(c.env, c.req.param("name"));
+  if (!template) return failed(c, "Template not found", 404);
+  const url = resolveTemplateRemoteUrl(c.env, template);
+  if (!url) return failed(c, "Template has no remote URL", 400);
+  try {
+    return success(c, { url, content: await fetchTemplateContent(url) });
+  } catch (error) {
+    return failed(c, error instanceof Error ? error.message : String(error), 502);
+  }
+});
+apiRoutes.post("/templates/sync", async (c) => {
+  const input = await c.req.json<JsonMap>().catch(() => ({} as JsonMap));
+  return success(c, { synced: await syncDueTemplates(c.env, { force: input.force === true }) });
+});
+apiRoutes.post("/templates/:name/sync", async (c) => {
+  const input = await c.req.json<JsonMap>().catch(() => ({} as JsonMap));
+  const result = await syncTemplateFromRemote(c.env, c.req.param("name"), { force: input.force === true });
+  if (result.status === "updated") return success(c, toApiTemplate(result.template, c.env));
+  if (result.status === "not-found") return failed(c, "Template not found", 404);
+  if (result.status === "no-url") return failed(c, "Template has no remote URL", 400);
+  if (result.status === "conflict") return failed(c, "Template has local changes; confirm overwrite to sync", 409);
+  return failed(c, result.status === "error" ? result.message : "Template sync failed", 502);
 });
 apiRoutes.delete("/templates/:name", async (c) => {
   try {
     const existing = await getTemplate(c.env, c.req.param("name"));
     if (!existing) return failed(c, "Template not found", 404);
-    if (BUILTIN_TEMPLATE_IDS.has(existing.id)) return failed(c, "Built-in templates cannot be deleted", 400);
     const references = (await listCollections(c.env))
       .filter((collection) => collection.templateId === existing.id)
       .map((collection) => collection.id);
@@ -429,6 +462,19 @@ apiRoutes.post("/preview/collection", async (c) => {
   }
 });
 
+apiRoutes.post("/link/test", async (c) => {
+  const input = await c.req.json<JsonMap>().catch(() => ({} as JsonMap));
+  const id = stringValue(input.id);
+  if (!id) return failed(c, "Link id is required", 400);
+  const result = await checkDownloadLink(c.env, {
+    type: input.type === "collection" ? "collection" : "source",
+    id,
+    target: stringValue(input.target) || undefined,
+    requestUrl: new URL(c.req.url),
+    requestUserAgent: c.req.header("user-agent") || "",
+  });
+  return success(c, result);
+});
 apiRoutes.get("/link/source/:name", async (c) => {
   const sub = await getSource(c.env, c.req.param("name"));
   if (!sub) return failed(c, "Source not found", 404);
@@ -542,6 +588,10 @@ function toApiSource(source: SourceRecord) {
     filters: source.filters,
     enabled: source.enabled,
     meta: source.meta,
+    lastFetchedAt: source.lastFetchedAt,
+    lastError: source.lastError,
+    lastNodeCount: source.lastNodeCount,
+    lastCacheStatus: source.lastCacheStatus,
   };
 }
 
@@ -596,13 +646,18 @@ function mergeCollection(existing: CollectionRecord, next: Partial<CollectionRec
   return { ...existing, ...next, id: existing.id, meta: { ...existing.meta, ...next.meta } };
 }
 
-function toApiTemplate(template: TemplateRecord) {
+function toApiTemplate(template: TemplateRecord, env: SubStoreEnv) {
   return {
     id: template.id,
     name: template.name,
     target: template.target,
     config: template.config,
-    readonly: BUILTIN_TEMPLATE_IDS.has(template.id),
+    builtin: BUILTIN_TEMPLATE_IDS.has(template.id),
+    remoteUrl: resolveTemplateRemoteUrl(env, template) ?? null,
+    remoteUrlOverride: template.remoteUrl ?? null,
+    lastSyncedAt: template.lastSyncedAt ?? null,
+    syncError: template.syncError ?? null,
+    dirty: Boolean(template.lastSyncedAt && template.updatedAt > template.lastSyncedAt),
   };
 }
 
@@ -627,6 +682,7 @@ function fromApiTemplate(input: JsonMap): Partial<TemplateRecord> {
     name: stringValue(input.name || input.id),
     target,
     config: parseTemplateConfig(input.config ?? input.content, target),
+    remoteUrl: typeof input.remoteUrl === "string" ? input.remoteUrl : undefined,
   };
 }
 
@@ -764,45 +820,6 @@ async function parseJsonOrText(c: ApiContext) {
   } catch {
     return { content: text };
   }
-}
-
-function parseTemplateConfig(input: unknown, target: SubscriptionTarget = "mihomo") {
-  const normalize = (value: JsonMap) => (target === "sing-box" ? { ...value } : normalizeMihomoTemplateConfig(value));
-  if (input && typeof input === "object" && !Array.isArray(input)) return normalize(input as JsonMap);
-  if (typeof input !== "string" || !input.trim()) throw new Error("Template config is required");
-  try {
-    const parsed = input.trim().startsWith("{") ? JSON.parse(input) : parseYaml(input);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return normalize(parsed as JsonMap);
-  } catch {
-    throw new Error("Template config must be valid JSON or YAML");
-  }
-  throw new Error("Template config must be an object");
-}
-
-function normalizeMihomoTemplateConfig(input: JsonMap) {
-  const aliases: Record<string, string> = {
-    "mixed-port": "mixedPort",
-    "allow-lan": "allowLan",
-    "log-level": "logLevel",
-    "proxy-groups": "proxyGroups",
-    "rule-providers": "ruleProviders",
-  };
-  const values: JsonMap = {
-    mixedPort: input.mixedPort ?? input["mixed-port"],
-    allowLan: input.allowLan ?? input["allow-lan"],
-    logLevel: input.logLevel ?? input["log-level"],
-    proxyGroups: input.proxyGroups ?? input["proxy-groups"],
-    ruleProviders: input.ruleProviders ?? input["rule-providers"],
-  };
-  const seen = new Set<string>();
-  const output: JsonMap = {};
-  for (const [key, value] of Object.entries(input)) {
-    const normalizedKey = aliases[key] || key;
-    if (seen.has(normalizedKey)) continue;
-    seen.add(normalizedKey);
-    output[normalizedKey] = values[normalizedKey] ?? value;
-  }
-  return output;
 }
 
 type FlowRequest = {

@@ -30,6 +30,7 @@
   ],
   "vars": {
     "SUB_STORE_APP_NAME": "Sub-Store Cloudflare",
-    "SUB_STORE_PUBLIC_DOWNLOAD_HOSTS": ""
+    "SUB_STORE_PUBLIC_DOWNLOAD_HOSTS": "",
+    "SUB_STORE_TEMPLATE_BASE_URL": "https://raw.githubusercontent.com/Jayden-27/sub-store-cloudflare/main/config/templates"
   }
 }

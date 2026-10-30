@@ -1,11 +1,11 @@
 import { env, exports as workerExports } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const ADMIN_TOKEN = "test-admin-token";
 const DOWNLOAD_TOKEN = "test-download-token";
 
 describe("Worker and D1 integration", () => {
-  it("applies migrations and keeps built-in templates out of D1", async () => {
+  it("applies migrations and seeds built-in templates", async () => {
     const tables = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
     ).all<{ name: string }>();
@@ -21,7 +21,8 @@ describe("Worker and D1 integration", () => {
 
     const columns = await env.DB.prepare("PRAGMA table_info(sources)").all<{ name: string }>();
     expect(columns.results.map((row) => row.name)).toContain("meta_json");
-    expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM templates").first("count")).toBe(0);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM templates").first("count")).toBe(6);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM templates WHERE id = 'acl4ssr-mihomo'").first("count")).toBe(1);
     expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM collections WHERE id = 'daily'").first("count")).toBe(1);
   });
 
@@ -379,8 +380,181 @@ describe("Worker and D1 integration", () => {
     expect(await download.text()).toContain("Test Node");
   });
 
-  it("rejects oversized API bodies", async () => {
-    const response = await workerRequest("/api/storage", {
+  it("supports template and filters overrides on download links", async () => {
+    await workerRequest("/api/sources", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "override-source",
+        name: "Override Source",
+        type: "local",
+        content: "vless://00000000-0000-4000-8000-000000000002@example.com:443?security=tls#TestNode",
+        enabled: true,
+      }),
+    });
+    await workerRequest("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "override-collection",
+        name: "Override Collection",
+        sourceIds: ["override-source"],
+        filters: [{ type: "rename", pattern: "TestNode", replacement: "FilteredNode" }],
+        templateId: "mihomo-basic",
+        enabled: true,
+      }),
+    });
+
+    const plain = await workerRequest(`/download/collection/override-collection/mihomo/${DOWNLOAD_TOKEN}`, {}, false);
+    expect(plain.status).toBe(200);
+    expect(await plain.text()).toContain("FilteredNode");
+
+    const withoutFilters = await workerRequest(`/download/collection/override-collection/mihomo/${DOWNLOAD_TOKEN}?filters=none`, {}, false);
+    expect(withoutFilters.status).toBe(200);
+    const withoutFiltersText = await withoutFilters.text();
+    expect(withoutFiltersText).toContain("TestNode");
+    expect(withoutFiltersText).not.toContain("FilteredNode");
+
+    const customFilters = await workerRequest(
+      `/download/collection/override-collection/mihomo/${DOWNLOAD_TOKEN}?filters=${encodeURIComponent(JSON.stringify([{ type: "rename", pattern: "TestNode", replacement: "InlineNode" }]))}`,
+      {},
+      false,
+    );
+    expect(customFilters.status).toBe(200);
+    expect(await customFilters.text()).toContain("InlineNode");
+
+    const missingTemplate = await workerRequest(`/download/collection/override-collection/mihomo/${DOWNLOAD_TOKEN}?template=missing-template`, {}, false);
+    expect(missingTemplate.status).toBe(404);
+
+    const badFilters = await workerRequest(`/download/collection/override-collection/mihomo/${DOWNLOAD_TOKEN}?filters=oops`, {}, false);
+    expect(badFilters.status).toBe(400);
+  });
+
+  it("syncs a template from its remote URL and protects local edits", async () => {
+    vi.stubGlobal("fetch", async () => new Response("# keep this comment\nmixedPort: 4321\nmode: rule\n", { status: 200 }));
+    try {
+      await workerRequest("/api/templates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "remote-template",
+          name: "Remote Template",
+          target: "mihomo",
+          content: "mixedPort: 1111",
+          remoteUrl: "https://templates.test/remote.yaml",
+        }),
+      });
+
+      const synced = await workerRequest("/api/templates/remote-template/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      expect(synced.status).toBe(200);
+      expect(getPath(await jsonObject(synced), "data", "config", "mixedPort")).toBe(4321);
+
+      const source = await workerRequest("/api/templates/remote-template/source");
+      expect(source.status).toBe(200);
+      expect(getPath(await jsonObject(source), "data", "content")).toContain("# keep this comment");
+
+      await workerRequest("/api/templates/remote-template", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "remote-template",
+          name: "Remote Template",
+          target: "mihomo",
+          content: "mixedPort: 2222",
+          remoteUrl: "https://templates.test/remote.yaml",
+        }),
+      });
+
+      const conflict = await workerRequest("/api/templates/remote-template/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      expect(conflict.status).toBe(409);
+
+      const forced = await workerRequest("/api/templates/remote-template/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      expect(forced.status).toBe(200);
+      expect(getPath(await jsonObject(forced), "data", "config", "mixedPort")).toBe(4321);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("reports link test diagnostics and per-action hit counts", async () => {
+    await workerRequest("/api/sources", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "diag-source",
+        name: "Diagnostic Source",
+        type: "local",
+        content: "vless://00000000-0000-4000-8000-000000000003@example.com:443?security=tls#DiagNode",
+        enabled: true,
+      }),
+    });
+    await workerRequest("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "diag-collection",
+        name: "Diagnostic Collection",
+        sourceIds: ["diag-source"],
+        filters: [{ type: "rename", pattern: "DiagNode", replacement: "RenamedNode" }],
+        templateId: "mihomo-basic",
+        enabled: true,
+      }),
+    });
+
+    const check = await workerRequest("/api/link/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "collection", id: "diag-collection", target: "mihomo" }),
+    });
+    expect(check.status).toBe(200);
+    const checkBody = await jsonObject(check);
+    expect(getPath(checkBody, "data", "status")).toBe("ok");
+    expect(getPath(checkBody, "data", "nodes")).toBe(1);
+    expect(getPath(checkBody, "data", "preview")).toContain("RenamedNode");
+
+    const missing = await workerRequest("/api/link/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "collection", id: "missing-collection" }),
+    });
+    expect(getPath(await jsonObject(missing), "data", "status")).toBe("not-found");
+
+    const preview = await workerRequest("/api/preview/collection", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "diag-collection",
+        name: "Diagnostic Collection",
+        sourceIds: ["diag-source"],
+        filters: [
+          { type: "rename", pattern: "DiagNode", replacement: "RenamedNode" },
+          { type: "exclude", pattern: "nothing-matches" },
+        ],
+        templateId: "mihomo-basic",
+        enabled: true,
+      }),
+    });
+    expect(preview.status).toBe(200);
+    const steps = getPath(await jsonObject(preview), "data", "steps");
+    expect(steps).toEqual([
+      { index: 0, type: "rename", before: 1, after: 1 },
+      { index: 1, type: "exclude", before: 1, after: 1 },
+    ]);
+  });
+
+  it("rejects oversized API bodies", async () => {    const response = await workerRequest("/api/storage", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ content: "x".repeat(4 * 1024 * 1024) }),

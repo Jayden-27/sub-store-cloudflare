@@ -1,15 +1,17 @@
 import {
-  BUILTIN_TEMPLATE_IDS,
   BUILTIN_TEMPLATES,
   DEFAULT_TEMPLATE_CONFIG,
   DEFAULT_TEMPLATE_ID,
 } from "./defaults";
 import { normalizeTargetAlias } from "./targets";
+import { parseTemplateConfig } from "./template-config";
+import { fetchTemplateContent, resolveTemplateRemoteUrl, templateConfigHash } from "./template-sync";
 import type {
   AppSettings,
   AppConfig,
   CollectionRecord,
   FilterRule,
+  SourceFetchResult,
   SourceRecord,
   SubscriptionCollection,
   SubscriptionSource,
@@ -30,6 +32,10 @@ type SourceRow = {
   meta_json?: string;
   created_at: number;
   updated_at: number;
+  last_fetched_at?: number | null;
+  last_error?: string | null;
+  last_node_count?: number | null;
+  last_cache_status?: string | null;
 };
 
 type CollectionRow = {
@@ -52,6 +58,10 @@ type TemplateRow = {
   config_json: string;
   created_at: number;
   updated_at: number;
+  remote_url?: string | null;
+  synced_config_hash?: string | null;
+  last_synced_at?: number | null;
+  sync_error?: string | null;
 };
 
 type SettingsRow = {
@@ -75,6 +85,50 @@ export async function getAppConfig(env: SubStoreEnv): Promise<AppConfig> {
 export async function listSources(env: SubStoreEnv) {
   const rows = await env.DB.prepare("SELECT * FROM sources ORDER BY created_at ASC").all<SourceRow>();
   return rows.results.map(sourceFromRow);
+}
+
+const STATUS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+export type SourceStatusUpdate = {
+  id: string;
+  fetchedAt?: number;
+  error?: string;
+  nodeCount?: number;
+  cacheStatus?: string;
+};
+
+export function pendingSourceStatusUpdates(
+  sources: Array<{ id: string; lastFetchedAt?: number; lastError?: string; lastNodeCount?: number; lastCacheStatus?: string }>,
+  results: Map<string, SourceFetchResult>,
+  now = Date.now(),
+): SourceStatusUpdate[] {
+  const byId = new Map(sources.map((source) => [source.id, source]));
+  const updates: SourceStatusUpdate[] = [];
+  for (const [id, result] of results) {
+    const source = byId.get(id);
+    if (!source) continue;
+    if (result.error) {
+      if (source.lastError !== result.error) updates.push({ id, error: result.error });
+      continue;
+    }
+    const stale = !source.lastFetchedAt || now - source.lastFetchedAt >= STATUS_REFRESH_INTERVAL_MS;
+    const changed = Boolean(source.lastError) || source.lastNodeCount !== result.nodeCount || source.lastCacheStatus !== result.cacheStatus;
+    if (stale || changed) {
+      updates.push({ id, fetchedAt: now, nodeCount: result.nodeCount ?? 0, cacheStatus: result.cacheStatus });
+    }
+  }
+  return updates;
+}
+
+export async function recordSourceStatuses(env: SubStoreEnv, updates: SourceStatusUpdate[]) {
+  if (updates.length === 0) return;
+  await env.DB.batch(updates.map((update) => update.error
+    ? env.DB.prepare("UPDATE sources SET last_error = ? WHERE id = ?").bind(update.error, update.id)
+    : env.DB.prepare(
+        `UPDATE sources
+         SET last_fetched_at = ?, last_error = NULL, last_node_count = ?, last_cache_status = ?
+         WHERE id = ?`,
+      ).bind(update.fetchedAt ?? Date.now(), update.nodeCount ?? 0, update.cacheStatus || null, update.id)));
 }
 
 export async function sortSources(env: SubStoreEnv, ids: string[]) {
@@ -114,7 +168,11 @@ export async function upsertSource(env: SubStoreEnv, input: Partial<SourceRecord
        enabled = excluded.enabled,
        filters_json = excluded.filters_json,
        meta_json = excluded.meta_json,
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at,
+       last_fetched_at = NULL,
+       last_error = NULL,
+       last_node_count = NULL,
+       last_cache_status = NULL`,
   )
     .bind(
       source.id,
@@ -145,7 +203,11 @@ export async function upsertSourcesBatch(env: SubStoreEnv, sources: SourceRecord
        enabled = excluded.enabled,
        filters_json = excluded.filters_json,
        meta_json = excluded.meta_json,
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at,
+       last_fetched_at = NULL,
+       last_error = NULL,
+       last_node_count = NULL,
+       last_cache_status = NULL`,
   ).bind(
     source.id,
     source.name,
@@ -247,18 +309,19 @@ export async function deleteCollection(env: SubStoreEnv, id: string) {
 
 export async function listTemplates(env: SubStoreEnv) {
   const rows = await env.DB.prepare("SELECT * FROM templates ORDER BY created_at ASC").all<TemplateRow>();
-  const custom = rows.results
-    .filter((row) => !BUILTIN_TEMPLATE_IDS.has(row.id))
-    .map(templateFromRow);
-  return [...BUILTIN_TEMPLATES.map(builtinTemplateRecord), ...custom];
+  return rows.results.map(templateFromRow);
 }
 
-export async function upsertTemplate(env: SubStoreEnv, input: Partial<TemplateRecord>) {
+export async function upsertTemplate(env: SubStoreEnv, input: Omit<Partial<TemplateRecord>, "remoteUrl"> & { remoteUrl?: string | null }) {
   const now = Date.now();
   const id = toId(input.id || input.name || "template");
-  if (BUILTIN_TEMPLATE_IDS.has(id)) throw new Error("Built-in templates cannot be modified");
   const existing = await getTemplate(env, id);
   const target = normalizeTargetValue(input.target || existing?.target || "mihomo");
+  const remoteUrl = input.remoteUrl === undefined
+    ? existing?.remoteUrl
+    : input.remoteUrl === null
+      ? undefined
+      : input.remoteUrl.trim();
   const template: TemplateRecord = {
     id,
     name: stringValue(input.name, existing?.name || id),
@@ -266,33 +329,103 @@ export async function upsertTemplate(env: SubStoreEnv, input: Partial<TemplateRe
     config: parseConfig(input.config || existing?.config || DEFAULT_TEMPLATE_CONFIG, target),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
+    remoteUrl,
+    syncedConfigHash: existing?.syncedConfigHash,
+    lastSyncedAt: existing?.lastSyncedAt,
+    syncError: existing?.syncError,
   };
 
   await env.DB.prepare(
-    `INSERT INTO templates (id, name, target, config_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO templates (id, name, target, config_json, created_at, updated_at, remote_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
        target = excluded.target,
        config_json = excluded.config_json,
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at,
+       remote_url = excluded.remote_url`,
   )
-    .bind(template.id, template.name, template.target, JSON.stringify(template.config), template.createdAt, template.updatedAt)
+    .bind(template.id, template.name, template.target, JSON.stringify(template.config), template.createdAt, template.updatedAt, remoteUrl ?? null)
     .run();
   return template;
 }
 
 export async function getTemplate(env: SubStoreEnv, id: string) {
-  const builtin = BUILTIN_TEMPLATES.find((template) => template.id === id);
-  if (builtin) return builtinTemplateRecord(builtin);
   const row = await env.DB.prepare("SELECT * FROM templates WHERE id = ?").bind(id).first<TemplateRow>();
   return row ? templateFromRow(row) : undefined;
 }
 
 export async function deleteTemplate(env: SubStoreEnv, id: string) {
-  if (BUILTIN_TEMPLATE_IDS.has(id)) throw new Error("Built-in templates cannot be deleted");
   await env.DB.prepare("DELETE FROM templates WHERE id = ?").bind(id).run();
   return { deleted: true };
+}
+
+export async function resetTemplateToBuiltin(env: SubStoreEnv, id: string) {
+  const builtin = BUILTIN_TEMPLATES.find((template) => template.id === id);
+  if (!builtin) return undefined;
+  const template = await upsertTemplate(env, { ...builtin, remoteUrl: null });
+  if (!template) return template;
+  await env.DB.prepare("UPDATE templates SET synced_config_hash = NULL, sync_error = NULL, last_synced_at = NULL WHERE id = ?").bind(id).run();
+  return { ...template, syncedConfigHash: undefined, syncError: undefined, lastSyncedAt: undefined };
+}
+
+export const TEMPLATE_SYNC_TTL_MS = 6 * 60 * 60 * 1000;
+
+/** last_synced_at records the last sync attempt so failed URLs respect the TTL too. */
+export type TemplateSyncOutcome =
+  | { status: "updated"; template: TemplateRecord }
+  | { status: "conflict" }
+  | { status: "no-url" }
+  | { status: "not-found" }
+  | { status: "error"; message: string };
+
+export async function syncTemplateFromRemote(
+  env: SubStoreEnv,
+  id: string,
+  options: { force?: boolean } = {},
+): Promise<TemplateSyncOutcome> {
+  const existing = await getTemplate(env, id);
+  if (!existing) return { status: "not-found" };
+  const url = resolveTemplateRemoteUrl(env, existing);
+  if (!url) return { status: "no-url" };
+  const currentHash = await templateConfigHash(existing.config);
+  if (!options.force && existing.syncedConfigHash && existing.syncedConfigHash !== currentHash) {
+    return { status: "conflict" };
+  }
+  try {
+    const content = await fetchTemplateContent(url);
+    const config = parseTemplateConfig(content, existing.target);
+    const hash = await templateConfigHash(config);
+    const now = Date.now();
+    await env.DB.prepare(
+      `UPDATE templates
+       SET config_json = ?, synced_config_hash = ?, last_synced_at = ?, sync_error = NULL, updated_at = ?
+       WHERE id = ?`,
+    ).bind(JSON.stringify(config), hash, now, now, id).run();
+    return {
+      status: "updated",
+      template: { ...existing, config: config as TemplateRecord["config"], syncedConfigHash: hash, lastSyncedAt: now, syncError: undefined, updatedAt: now },
+    };
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : String(error)).trim() || "Template sync failed";
+    await env.DB.prepare("UPDATE templates SET sync_error = ?, last_synced_at = ? WHERE id = ?")
+      .bind(message, Date.now(), id)
+      .run();
+    return { status: "error", message };
+  }
+}
+
+export async function syncDueTemplates(env: SubStoreEnv, options: { ttlMs?: number; force?: boolean } = {}) {
+  const ttlMs = options.ttlMs ?? TEMPLATE_SYNC_TTL_MS;
+  const now = Date.now();
+  const results: Array<{ id: string; status: TemplateSyncOutcome["status"]; message?: string }> = [];
+  for (const template of await listTemplates(env)) {
+    if (!resolveTemplateRemoteUrl(env, template)) continue;
+    if (!options.force && template.lastSyncedAt && now - template.lastSyncedAt < ttlMs) continue;
+    const result = await syncTemplateFromRemote(env, template.id, { force: options.force });
+    results.push({ id: template.id, status: result.status, message: result.status === "error" ? result.message : undefined });
+  }
+  return results;
 }
 
 export async function getSettings(env: SubStoreEnv): Promise<AppSettings> {
@@ -328,7 +461,7 @@ export async function exportStorage(env: SubStoreEnv) {
     settings: config.settings || {},
     sources: config.sources,
     collections: config.collections,
-    templates: config.templates.filter((template) => !BUILTIN_TEMPLATE_IDS.has(template.id)),
+    templates: config.templates,
   };
 }
 
@@ -366,6 +499,10 @@ export async function getSubscriptionSources(env: SubStoreEnv): Promise<Subscrip
     filters: source.filters,
     enabled: source.enabled,
     meta: source.meta,
+    lastFetchedAt: source.lastFetchedAt,
+    lastError: source.lastError,
+    lastNodeCount: source.lastNodeCount,
+    lastCacheStatus: source.lastCacheStatus,
   }));
 }
 
@@ -378,14 +515,6 @@ export async function getSubscriptionCollection(env: SubStoreEnv, id: string): P
 export async function getRoutingTemplate(env: SubStoreEnv, id: string | undefined) {
   const template = await getTemplate(env, id || DEFAULT_TEMPLATE_ID);
   return template ? { id: template.id, name: template.name, target: template.target, config: template.config } : undefined;
-}
-
-function builtinTemplateRecord(template: (typeof BUILTIN_TEMPLATES)[number]): TemplateRecord {
-  return {
-    ...template,
-    createdAt: 0,
-    updatedAt: 0,
-  };
 }
 
 function sourceImportStatements(env: SubStoreEnv, sources: Partial<SourceRecord>[], now: number) {
@@ -421,7 +550,6 @@ function sourceImportStatements(env: SubStoreEnv, sources: Partial<SourceRecord>
 
 function templateImportStatements(env: SubStoreEnv, templates: Partial<TemplateRecord>[], now: number) {
   return templates
-    .filter((input) => !BUILTIN_TEMPLATE_IDS.has(toId(input.id || input.name || "template")))
     .map((input, index) => {
       const id = toId(input.id || input.name || "template");
       return env.DB.prepare(
@@ -486,6 +614,10 @@ function sourceFromRow(row: SourceRow): SourceRecord {
     meta: normalizeMeta(parseJson(row.meta_json || "{}", {})),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    lastFetchedAt: row.last_fetched_at ?? undefined,
+    lastError: row.last_error || undefined,
+    lastNodeCount: row.last_node_count ?? undefined,
+    lastCacheStatus: row.last_cache_status || undefined,
   };
 }
 
@@ -513,6 +645,10 @@ function templateFromRow(row: TemplateRow): TemplateRecord {
     config: parseConfig(parseJson(row.config_json, DEFAULT_TEMPLATE_CONFIG), target),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    remoteUrl: row.remote_url ?? undefined,
+    syncedConfigHash: row.synced_config_hash || undefined,
+    lastSyncedAt: row.last_synced_at ?? undefined,
+    syncError: row.sync_error || undefined,
   };
 }
 
@@ -591,7 +727,7 @@ function normalizeTemplateInput(input: unknown): Partial<TemplateRecord> | undef
   if (!input || typeof input !== "object") return undefined;
   const template = input as Record<string, unknown>;
   const id = stringValue(template.id || template.name, "");
-  if (!id || BUILTIN_TEMPLATE_IDS.has(id)) return undefined;
+  if (!id) return undefined;
   const target = normalizeTargetValue(template.target);
   return {
     id,
