@@ -21,6 +21,11 @@ const databaseName = stringValue(deployment.d1DatabaseName, "sub-store-cloudflar
 const downloadHostname = stringValue(deployment.downloadHostname, "");
 const adminHostname = stringValue(deployment.adminHostname, "");
 const appName = stringValue(existingConfig?.vars?.SUB_STORE_APP_NAME, "Sub-Store Cloudflare");
+const rootVars = readJsonFile("wrangler.jsonc")?.vars || {};
+const templateBaseUrl = stringValue(
+  process.env.SUB_STORE_TEMPLATE_BASE_URL,
+  stringValue(rootVars.SUB_STORE_TEMPLATE_BASE_URL, ""),
+);
 const routes = [];
 
 if (adminHostname && !adminHostname.endsWith(".workers.dev")) {
@@ -61,6 +66,7 @@ const config = {
   vars: {
     SUB_STORE_APP_NAME: appName,
     SUB_STORE_PUBLIC_DOWNLOAD_HOSTS: downloadHostname,
+    ...(templateBaseUrl ? { SUB_STORE_TEMPLATE_BASE_URL: templateBaseUrl } : {}),
   },
   ...(routes.length > 0 ? { routes } : {}),
 };
