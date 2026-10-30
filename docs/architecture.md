@@ -37,7 +37,7 @@ Cloudflare Worker
 | --- | --- |
 | `sources` | 保存远程订阅 URL 或本地节点文本。 |
 | `collections` | 保存订阅源组合、过滤器和默认模板。 |
-| `templates` | 只保存用户创建的规则模板。内置模板由 Worker 代码维护。 |
+| `templates` | 保存全部规则模板：首次部署种入内置模板，此后由用户增删改。 |
 | `app_settings` | 保存远程订阅请求参数、主题和必要的前端默认状态。 |
 | `download_grants` | 保存独立下载授权的 token hash、资源范围、格式限制和有效期。 |
 | `recycle_bin` | 最多保存 50 条被删除配置的快照。 |
@@ -123,7 +123,7 @@ Cloudflare Worker
 
 ## Templates
 
-内置模板由 Worker 代码直接维护，因此升级 Worker 后现有部署会立即获得模板修正，不需要重复 seed。用户自定义模板保存在 D1。模板只应用于 Mihomo 和 Stash 这类 YAML 输出。导入接口接受 JSON 或 YAML；常见 Mihomo YAML 键名会归一化成内部配置。
+内置模板在迁移时种入 D1，之后就是普通模板：可以编辑、删除、恢复默认，也可以配置更新地址从远程 YAML 拉取最新配置。升级 Worker 不会覆盖用户改动，只会补种新增的内置模板。同步以配置哈希判断是否有本地修改，有则跳过，除非显式覆盖；打开设置页时会按 6 小时 TTL 惰性检查一次。仓库内的模板文件位于 `config/templates/`，由 `pnpm run templates:export` 从 `defaults.ts` 生成。模板只应用于 Mihomo 和 Stash 这类 YAML 输出。导入接口接受 JSON 或 YAML；常见 Mihomo YAML 键名会归一化成内部配置。
 
 - `mixedPort`
 - `mixed-port`

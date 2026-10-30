@@ -30,12 +30,16 @@ Sub-Store Cloudflare 是一个独立维护、面向 Cloudflare 免费版的订�
 
 - 远程订阅、本地节点和组合订阅
 - 区域、协议、正则、去重、排序、域名解析等节点处理
+- 预览时显示每个节点操作前后的节点数，便于定位规则影响
 - 构建时 JavaScript Filter / Operator，不执行来自 D1 或网络的运行时脚本
 - Mihomo、Stash、Surge、Surge Mac、Surfboard、Loon、Egern、Shadowrocket、Quantumult X、sing-box、V2Ray、URI 和 JSON 输出
 - Mihomo / Stash / sing-box 规则模板，支持模板字段透传与动态节点合并
 - 一次性节点、订阅和规则转换工具
+- 从原版 Sub-Store 备份导入订阅源和组合订阅
+- 订阅列表批量启用、停用、加标签和删除
 - 智能导入 URI、Base64、Mihomo YAML 和 JSON 节点，按地区预览后合并到现有订阅源
 - 可撤销、可过期、可限制输出格式的独立分享链接
+- 订阅链接自检：服务端生成一次并返回节点数、体积、耗时和内容预览
 - 配置备份、恢复和最多 50 条的回收站
 - 订阅流量元数据透传、边缘缓存和失败回退
 
@@ -106,6 +110,9 @@ pnpm run install:quick
 - 模板只作用于匹配的输出目标，不同客户端之间不会互相套用。
 - 代理组支持 `include-all` 与 `$all`；使用 `$all` 可在生成时按源顺序展开节点。
 - 一个组合订阅绑定一个模板；需要多套客户端配置时创建多个组合。
+- 内置模板在首次部署时写入 D1，之后可自由编辑、删除或恢复默认；升级只会补种新增模板，不覆盖你的修改。
+- 模板可配置更新地址，从远程 YAML 同步最新规则。内置模板默认指向本仓库 `config/templates/`，打开设置页时超过 6 小时会自动检查一次；有本地修改的模板默认跳过。
+- 「源文件」以只读方式展示远程原文，保留注释；编辑区仍显示规范化后的配置。
 
 ## 安全设计
 
@@ -150,6 +157,7 @@ corepack enable
 pnpm run setup
 cp cloudflare/.dev.vars.example cloudflare/.dev.vars
 pnpm run build:frontend
+pnpm --dir cloudflare run dev:migrate
 pnpm run dev
 ```
 

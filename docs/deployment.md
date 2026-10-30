@@ -226,6 +226,8 @@ pnpm run deploy:config -- config/agent-setup.local.json cloudflare/wrangler.depl
 
 如果使用单独下载域名，填写 `downloadHostname`。生成器会写入 `SUB_STORE_PUBLIC_DOWNLOAD_HOSTS`，该域名只允许访问 `/download/*`。
 
+内置模板的远程更新地址由 `SUB_STORE_TEMPLATE_BASE_URL` 决定（默认指向本仓库的 `config/templates`）。修改模板文件后需要推送仓库，同步才会拿到新内容；也可以把该变量留空，完全依靠手动编辑模板。
+
 ## 6. 本地开发
 
 需要 Node.js 22 和 pnpm 11。
@@ -234,8 +236,11 @@ pnpm run deploy:config -- config/agent-setup.local.json cloudflare/wrangler.depl
 pnpm run setup
 cp cloudflare/.dev.vars.example cloudflare/.dev.vars
 pnpm run build:frontend
+pnpm --dir cloudflare run dev:migrate
 pnpm run dev
 ```
+
+首次本地开发必须执行一次 `dev:migrate`，否则接口会返回 500（表不存在）。迁移已是最新时为空操作。
 
 本地 `.dev.vars` 至少包含：
 
@@ -279,7 +284,24 @@ https://substore.example.com/download/source/<source-id>/uri?token=<download-tok
 
 `url`、`content` 和 `ua` 只影响本次请求，不会写入 D1。
 
+输出覆盖参数（同样只影响本次请求）：
+
+```text
+# 临时换用另一个规则模板
+https://substore.example.com/download/collection/<collection-id>/mihomo?token=<download-token>&template=<template-id>
+
+# 跳过所有过滤规则
+https://substore.example.com/download/collection/<collection-id>/mihomo?token=<download-token>&filters=none
+
+# 用自定义过滤规则替换本次请求的过滤器（URL 编码的 JSON 数组）
+https://substore.example.com/download/collection/<collection-id>/mihomo?token=<download-token>&filters=%5B%7B%22type%22%3A%22dedupe%22%7D%5D
+```
+
+`template` 指定不存在的模板会返回 404；`filters` 只接受 `none` 或 JSON 数组，其他值返回 400。两者都可以用在 source 和 collection 链接上。
+
 远程订阅默认边缘缓存 300 秒。可以在“设置 → 请求设置”中把 TTL 设为 `0` 关闭，或者给下载链接添加 `refresh=1` 强制刷新。Cache API 不可用时 Worker 会直接请求上游。
+
+每次下载会记录各远程订阅源的抓取结果（上次成功时间、节点数、缓存命中或失败原因），在订阅列表里展示。同名失败会去重写入；配置修改后状态会被清空。
 
 ## 从旧版本升级
 
