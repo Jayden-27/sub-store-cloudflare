@@ -1,10 +1,10 @@
 # 原版 Sub-Store 兼容矩阵
 
-Sub-Store Cloudflare v1.1.0 是面向 Cloudflare Workers 免费版的兼容版本，不是把原版 Node.js 后端原样塞进 Worker。下面的“支持”都对应真实 Worker 行为和测试，不代表只保留了同名 UI。
+Sub-Store Cloudflare v1.2.0 是面向 Cloudflare Workers 免费版的兼容版本，不是把原版 Node.js 后端原样塞进 Worker。下面的“支持”都对应真实 Worker 行为和测试，不代表只保留了同名 UI。
 
 ## 订阅输入与输出
 
-| 能力 | v1.1.0 状态 | 说明 |
+| 能力 | v1.2.0 状态 | 说明 |
 | --- | --- | --- |
 | URI / Base64 订阅 | 支持 | SS、SSR、VMess、VLESS、Trojan、Hysteria、Hysteria2、TUIC、AnyTLS、HTTP、SOCKS5、WireGuard。 |
 | Mihomo / Clash YAML | 支持 | `proxies` 节点数组会归一化；未知结构化节点会保留给 Mihomo/JSON。 |

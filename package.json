@@ -1,6 +1,6 @@
 {
   "name": "sub-store-cloudflare-workspace",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Cloudflare-native subscription aggregation and routing template manager powered by Workers, Static Assets, D1, and Worker Secrets.",
   "homepage": "https://github.com/Jayden-27/sub-store-cloudflare#readme",
   "repository": {

@@ -60,7 +60,7 @@ export const apiRoutes = new Hono<{ Bindings: SubStoreEnv }>();
 type JsonMap = Record<string, unknown>;
 type ApiContext = Context<{ Bindings: SubStoreEnv }>;
 
-const FRONTEND_VERSION = "1.1.0";
+const FRONTEND_VERSION = "1.2.0";
 apiRoutes.use("*", async (c, next) => {
   const invalid = await requireAdmin(c);
   if (invalid) return invalid;

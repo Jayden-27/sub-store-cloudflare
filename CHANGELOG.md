@@ -6,6 +6,8 @@ This project follows semantic versioning where practical.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-31
+
 ### Added
 
 - Added sing-box routing templates with target isolation and deep outbound merging.
@@ -14,22 +16,37 @@ This project follows semantic versioning where practical.
 - Added a build-time client-fingerprint operator for supported TLS proxy nodes.
 - Added smart node import for URI, Base64, Mihomo YAML, and JSON content with region preview, duplicate detection, and transactional source merging.
 - Smart import now infers regions from flags, names, and endpoint labels, and requires manual target selection for unrecognized regions.
+- Built-in rule templates are now seeded into D1 and owned by the user: edit, delete, reset to default, or refresh from a remote YAML source.
+- Added a read-only template source viewer that preserves YAML comments.
+- Added per-source fetch status (last success, node count, cache hit, failure reason) to the subscription list.
+- Added subscription link self-test returning node count, size, duration, and a content preview.
+- Added QR codes for download links.
+- Added batch enable, disable, tag, and delete for subscriptions and collections.
+- Added import of upstream Sub-Store backups, migrating sources, collections, and supported node actions with a preview step.
+- Added per-action node counts to editor previews.
+- Added `template` and `filters` overrides to download links.
+- Added readable fetch error classification for DNS, timeout, TLS, and HTTP status failures.
 
 ### Changed
 
 - Preserved template top-level field order in generated Mihomo YAML.
 - Aligned the default UI layout at an 800px centered desktop width and refined template editing dialogs.
 - Improved download error classification with explicit 422, 502, and 504 responses.
+- Template updates are decoupled from Worker releases: built-in templates refresh from `config/templates` and upgrades only seed new ones.
+- The template list shows sync state (default, synced, modified, failed) and moves secondary actions into a menu.
 
 ### Fixed
 
-- Prevented deletion of templates that are still referenced by collections.
+- Prevented deletion of templates that are still referenced by collections and linked the warning to the affected collections.
 - Restored default icons, fixed CSP blocking for HTTPS icons, and improved icon repository validation.
 - Added restore previews and clearer empty, loading, and failure states.
+- Fixed Windows front-end builds failing on POSIX-style environment prefixes.
+- Fixed Wrangler version drift caused by the nested workspace configuration.
 
 ### Documentation
 
 - Reorganized the README as an independent project homepage and aligned repository links and package metadata with the standalone repository.
+- Documented template remote sync, download link overrides, link self-test, and the explicit local migration step.
 
 ## [1.1.0] - 2026-07-11
 
