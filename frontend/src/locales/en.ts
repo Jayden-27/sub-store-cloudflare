@@ -65,6 +65,22 @@ export default {
     my: "Settings"
   },
   toolsPage: {
+    upstreamImport: {
+      title: "Import upstream Sub-Store backup",
+      desc: "Choose a backup JSON exported by the original Sub-Store. Sources and collections are migrated; files, scripts, and settings are not.",
+      selectFile: "Choose backup file",
+      apply: "Import",
+      summary: "Will import {sources} source(s) and {collections} collection(s)",
+      warnUnsupported: "{count} unsupported node action(s) will be skipped",
+      warnMissing: "{count} collection reference(s) point to missing sources",
+      warnSkipped: "{count} item(s) with the same ID already exist and will be skipped",
+      warnTemplate: "{count} collection custom template(s) cannot be migrated and will use the default template",
+      errorEmpty: "The backup file is empty",
+      errorNoItems: "No sources or collections found in the file",
+      errorInvalid: "Unable to parse the backup. Make sure it is a JSON file exported by Sub-Store.",
+      applySucceed: "Imported {sources} source(s) and {collections} collection(s)",
+      applyFailed: "Import failed\n{e}"
+    },
     converter: {
       title: "One-shot conversion",
       desc: "Paste nodes, a subscription, or rules and convert without saving to D1.",
@@ -113,6 +129,32 @@ export default {
     backendDesc: "If you are seeing this, it is probably due to a routing interception issue on the front end of your browser. You can force a refresh to see it or use the link directly without affecting the use of this link."
   },
   subPage: {
+    batch: {
+      sources: "Sources",
+      collections: "Collections",
+      selectAll: "Select all",
+      selected: "{count} selected",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      enable: "Enable",
+      disable: "Disable",
+      addTag: "Add tag",
+      tagPlaceholder: "Tag name",
+      delete: "Delete",
+      deleteTitle: "Delete selected",
+      deleteContent: "Delete {count} selected item(s)? They can be restored from the recycle bin.",
+      cancel: "Cancel",
+      done: "Updated {count} item(s)",
+      partialFailed: "{count} item(s) failed",
+      empty: "Nothing to operate on"
+    },
+    fetchStatus: {
+      failed: "Fetch failed: {error}",
+      lastSuccess: "last success {time}",
+      lastFetch: "updated {time}",
+      nodes: "{count} nodes",
+      stale: "served from cache"
+    },
     import: {
       label: "Import",
       succeed: "Successfully imported!",
@@ -198,6 +240,8 @@ export default {
       openApp: "Open subscription website",
       preview: "Preview",
       copyLink: "Copy subscription link",
+      testLink: "Test subscription link",
+      showQr: "Show QR code",
       refresh: "Refresh usage info",
       edit: "Edit",
       moreActions: "Open more actions",
@@ -206,6 +250,20 @@ export default {
       delete: "Delete",
       openTarget: "Open {name} subscription",
       copyTarget: "Copy {name} subscription"
+    },
+    linkTest: {
+      title: "Link test",
+      loading: "Generating subscription…",
+      ok: "Generated successfully",
+      failed: "Generation failed",
+      notFound: "Resource not found or disabled",
+      nodes: "{count} nodes",
+      size: "Size {size}",
+      duration: "Took {ms}ms",
+      target: "Target {target}"
+    },
+    qr: {
+      title: "Subscription QR code"
     },
     subItem: {
       local: "Local subscription",
@@ -501,6 +559,7 @@ export default {
         },
         enable: "Enable",
         disable: "Disable",
+        hitCount: "Node counts before and after this action in the last run",
         script: {
           freeVerified: "Cloudflare Free verified",
           personal: "Personal build-time script",
@@ -758,7 +817,7 @@ export default {
       restore: "Restore",
       restoreTitle: "Restore backup",
       restoreContent: "Restoring will overwrite sources, collections, rule templates, and settings with the same names. Export a current backup first.",
-      restoreSummary: "File: {file}\n\nThis will restore {sources} source(s), {collections} collection(s), {templates} custom template(s), and request settings. Items with the same ID are overwritten; other data is kept.",
+      restoreSummary: "File: {file}\n\nThis will restore {sources} source(s), {collections} collection(s), {templates} rule template(s), and request settings. Items with the same ID are overwritten; other data is kept.",
       restoreInvalid: "Invalid backup file\n{e}"
     },
     templates: {
@@ -785,7 +844,35 @@ export default {
       deleteSucceed: "Template deleted",
       deleteFailed: "Failed to delete template\n{e}",
       deleteBlockedTitle: "Template is in use",
-      deleteBlockedContent: "Template {name} is used by these collections: {collections}.\n\nChange their rule template before deleting it."
+      deleteBlockedContent: "Template {name} is used by these collections: {collections}.\n\nChange their rule template before deleting it.",
+      reset: "Reset to default",
+      resetTitle: "Reset to default",
+      resetContent: "Reset {name} to its built-in default config? Your edits will be overwritten.",
+      resetSucceed: "Template reset to default",
+      resetFailed: "Failed to reset template\n{e}",
+      remoteUrl: "Update URL",
+      remoteUrlPlaceholder: "Leave empty to disable sync",
+      sync: "Update",
+      syncedAt: "synced {time}",
+      syncFailedShort: "sync failed: {e}",
+      syncSucceed: "Template updated",
+      syncFailed: "Failed to update template\n{e}",
+      syncConflictTitle: "Template has local changes",
+      syncConflictContent: "Template {name} was edited after the last sync.\n\nOverwriting with the remote version will discard those edits. Continue?",
+      viewSource: "Source",
+      sourceTitle: "Template source (read-only)",
+      more: "More",
+      deleteAction: "Delete template",
+      deleteBlockedGo: "Open collections",
+      syncSummaryFailed: "{count} template(s) failed to sync",
+      syncSummaryOk: "Last synced {time}",
+      status: {
+        default: "Default",
+        synced: "Synced",
+        modified: "Modified",
+        failed: "Sync failed",
+        custom: "Custom"
+      }
     },
     request: {
       title: "Request Settings",

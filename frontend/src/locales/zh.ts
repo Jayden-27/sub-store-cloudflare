@@ -65,6 +65,22 @@ export default {
     my: "设置"
   },
   toolsPage: {
+    upstreamImport: {
+      title: "导入上游 Sub-Store 备份",
+      desc: "选择原版 Sub-Store 导出的备份 JSON，可迁移订阅源和组合订阅。文件、脚本和设置不会导入。",
+      selectFile: "选择备份文件",
+      apply: "导入",
+      summary: "将导入 {sources} 个订阅源、{collections} 个组合订阅",
+      warnUnsupported: "{count} 个不支持的节点操作将被跳过",
+      warnMissing: "{count} 个组合引用了不存在的订阅源",
+      warnSkipped: "{count} 个同 ID 条目已存在，将跳过",
+      warnTemplate: "{count} 个组合的自定义模板不会被迁移，将使用默认模板",
+      errorEmpty: "备份文件为空",
+      errorNoItems: "文件里没有找到订阅源或组合订阅",
+      errorInvalid: "无法解析备份文件，请确认是 Sub-Store 导出的 JSON",
+      applySucceed: "已导入 {sources} 个订阅源、{collections} 个组合订阅",
+      applyFailed: "导入失败\n{e}"
+    },
     converter: {
       title: "一次性转换",
       desc: "粘贴节点、订阅或规则，不保存到 D1，直接转换为目标格式。",
@@ -113,6 +129,32 @@ export default {
     backendDesc: "如果你看到这个 可能是因为浏览器前端路由拦截的问题 可以强制刷新查看或直接使用该链接 不影响此链接的使用"
   },
   subPage: {
+    batch: {
+      sources: "订阅源",
+      collections: "组合订阅",
+      selectAll: "全选",
+      selected: "已选 {count}",
+      enabled: "已启用",
+      disabled: "已停用",
+      enable: "启用",
+      disable: "停用",
+      addTag: "加标签",
+      tagPlaceholder: "输入标签",
+      delete: "删除",
+      deleteTitle: "批量删除",
+      deleteContent: "确认删除选中的 {count} 个条目？删除后可在回收站恢复。",
+      cancel: "取消",
+      done: "已完成 {count} 项",
+      partialFailed: "{count} 项失败",
+      empty: "没有可操作的条目"
+    },
+    fetchStatus: {
+      failed: "拉取失败：{error}",
+      lastSuccess: "上次成功 {time}",
+      lastFetch: "上次更新 {time}",
+      nodes: "{count} 个节点",
+      stale: "使用缓存"
+    },
     import: {
       label: "导入",
       succeed: "导入成功",
@@ -198,6 +240,8 @@ export default {
       openApp: "打开订阅官网",
       preview: "即时预览",
       copyLink: "复制订阅链接",
+      testLink: "测试订阅链接",
+      showQr: "显示二维码",
       refresh: "刷新流量信息",
       edit: "编辑",
       moreActions: "打开更多操作",
@@ -207,9 +251,22 @@ export default {
       openTarget: "打开 {name} 订阅",
       copyTarget: "复制 {name} 订阅"
     },
+    linkTest: {
+      title: "链接测试",
+      loading: "正在生成订阅…",
+      ok: "生成成功",
+      failed: "生成失败",
+      notFound: "资源不存在或已停用",
+      nodes: "{count} 个节点",
+      size: "体积 {size}",
+      duration: "耗时 {ms}ms",
+      target: "目标 {target}"
+    },
+    qr: {
+      title: "订阅链接二维码"
+    },
     subItem: {
-      local: "本地订阅",
-      loading: "加载中...",
+      local: "本地订阅",      loading: "加载中...",
       flow: "已用/总流量",
       showRemainingFlow: "剩余/总流量",
       expires: "到期",
@@ -501,6 +558,7 @@ export default {
         },
         enable: "启用",
         disable: "禁用",
+        hitCount: "最近一次统计：该操作前后的节点数",
         script: {
           freeVerified: "已通过 Cloudflare 免费版验证",
           personal: "个人构建时脚本",
@@ -758,7 +816,7 @@ export default {
       restore: "恢复",
       restoreTitle: "恢复备份",
       restoreContent: "恢复会覆盖同名订阅源、组合订阅、规则模板和设置。建议先导出当前备份。",
-      restoreSummary: "文件：{file}\n\n将恢复 {sources} 个订阅源、{collections} 个组合、{templates} 个自定义模板和请求设置。同 ID 数据会被覆盖，其他数据保留。",
+      restoreSummary: "文件：{file}\n\n将恢复 {sources} 个订阅源、{collections} 个组合、{templates} 个规则模板和请求设置。同 ID 数据会被覆盖，其他数据保留。",
       restoreInvalid: "备份文件无效\n{e}"
     },
     templates: {
@@ -785,7 +843,35 @@ export default {
       deleteSucceed: "模板已删除",
       deleteFailed: "模板删除失败\n{e}",
       deleteBlockedTitle: "模板仍在使用",
-      deleteBlockedContent: "模板 {name} 正被以下组合使用：{collections}。\n\n请先修改这些组合的规则模板后再删除。"
+      deleteBlockedContent: "模板 {name} 正被以下组合使用：{collections}。\n\n请先修改这些组合的规则模板后再删除。",
+      reset: "恢复默认",
+      resetTitle: "恢复默认模板",
+      resetContent: "确认将 {name} 恢复为内置默认配置？当前修改会被覆盖。",
+      resetSucceed: "模板已恢复默认",
+      resetFailed: "恢复默认失败\n{e}",
+      remoteUrl: "更新地址",
+      remoteUrlPlaceholder: "留空则不同步",
+      sync: "更新",
+      syncedAt: "上次同步 {time}",
+      syncFailedShort: "同步失败：{e}",
+      syncSucceed: "模板已更新",
+      syncFailed: "模板更新失败\n{e}",
+      syncConflictTitle: "模板有本地修改",
+      syncConflictContent: "模板 {name} 在上次同步后被修改过。\n\n覆盖为远程版本会丢失这些修改，继续吗？",
+      viewSource: "源文件",
+      sourceTitle: "模板源文件（只读）",
+      more: "更多",
+      deleteAction: "删除模板",
+      deleteBlockedGo: "去修改组合",
+      syncSummaryFailed: "{count} 个模板同步失败",
+      syncSummaryOk: "最近同步 {time}",
+      status: {
+        default: "默认模板",
+        synced: "已同步",
+        modified: "已修改",
+        failed: "同步失败",
+        custom: "自定义模板"
+      }
     },
     request: {
       title: "请求设置",

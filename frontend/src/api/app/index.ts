@@ -428,6 +428,10 @@ const fromApiSource = (source: JsonMap): Sub => {
     process: Array.isArray(meta.actions) ? cloneJson(meta.actions) : fromApiFilters(source.filters),
     enabled: source.enabled !== false,
     tag: normalizeTags(meta.tag),
+    lastFetchedAt: typeof source.lastFetchedAt === 'number' ? source.lastFetchedAt : undefined,
+    lastError: typeof source.lastError === 'string' ? source.lastError : undefined,
+    lastNodeCount: typeof source.lastNodeCount === 'number' ? source.lastNodeCount : undefined,
+    lastCacheStatus: typeof source.lastCacheStatus === 'string' ? source.lastCacheStatus : undefined,
   } as Sub;
 };
 
@@ -604,6 +608,28 @@ export function useCloudflareApi() {
         data,
       }).then(response => adaptResponseData(response, fromApiTemplate));
     },
+    getTemplateSource: (name: string): AxiosPromise<MyAxiosRes> => request({
+      url: `/api/templates/${encodeURIComponent(name)}/source`,
+      method: 'get',
+    }),
+    syncTemplate: (name: string, force = false): AxiosPromise<MyAxiosRes> => {
+      return request({
+        url: `/api/templates/${encodeURIComponent(name)}/sync`,
+        method: 'post',
+        data: { force },
+      }).then(response => adaptResponseData(response, fromApiTemplate));
+    },
+    syncTemplates: (force = false): AxiosPromise<MyAxiosRes> => request({
+      url: '/api/templates/sync',
+      method: 'post',
+      data: { force },
+    }),
+    resetTemplate: (name: string): AxiosPromise<MyAxiosRes> => {
+      return request({
+        url: `/api/templates/${encodeURIComponent(name)}/reset`,
+        method: 'post',
+      }).then(response => adaptResponseData(response, fromApiTemplate));
+    },
     deleteTemplate: (name: string): AxiosPromise<MyAxiosRes> => {
       return request({
         url: `/api/templates/${encodeURIComponent(name)}`,
@@ -631,6 +657,11 @@ export function useCloudflareApi() {
         signal,
       });
     },
+    testLink: (data: { type: string; id: string; target?: string }): AxiosPromise<MyAxiosRes> => request({
+      url: '/api/link/test',
+      method: 'post',
+      data,
+    }),
     getDownloadLink: (
       type: 'sub' | 'collection',
       name: string,

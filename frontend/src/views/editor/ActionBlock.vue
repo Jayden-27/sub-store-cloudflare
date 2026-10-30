@@ -97,6 +97,14 @@
               </div> -->
             </div>
             <div class="right">
+              <span
+                v-if="statsByIndex.get(index)"
+                class="action-hit-count"
+                :class="{ 'is-changed': statsByIndex.get(index)!.before !== statsByIndex.get(index)!.after }"
+                :title="$t('editorPage.subConfig.actions.hitCount')"
+              >
+                {{ statsByIndex.get(index)!.before }} → {{ statsByIndex.get(index)!.after }}
+              </span>
               <div class="list-group-item-icons icon-button__input">
                 <template v-if="!findEditItemById(element).isEditing">
                   <font-awesome-icon icon="fa-solid fa-pen-to-square" @click.stop="toggleEditName(element)" />
@@ -257,11 +265,23 @@ const collapsedElements = ref([]);
 const form = inject<Sub | Collection>('form');
 // 列表渲染的数据
 // 预览开关数组，数组第一项为 id，对应 list 中的同 id 项目，控制该 id 开启关闭预览
-const { checked, list, sourceType } = defineProps<{
+const { checked, list, sourceType, stepCounts } = defineProps<{
   checked: Array<[string, boolean]>;
   list: ActionModuleProps[];
   sourceType?: string;
+  stepCounts?: Array<{ index: number; before: number; after: number; type: string }> | null;
 }>();
+
+const statsByIndex = computed(() => {
+  const map = new Map<number, { before: number; after: number }>();
+  if (!stepCounts || stepCounts.length < list.length) return map;
+  const offset = stepCounts.length - list.length;
+  list.forEach((_item, index) => {
+    const stat = stepCounts[offset + index];
+    if (stat) map.set(index, stat);
+  });
+  return map;
+});
 
 
 // 通过 i18n 构造 picker 选项
@@ -720,6 +740,15 @@ defineExpose({ exitAllEditName });
       display: flex;
       align-items: center;
       flex-shrink: 0;
+      .action-hit-count {
+        margin-right: 8px;
+        font-size: 12px;
+        color: var(--comment-text-color);
+        white-space: nowrap;
+        &.is-changed {
+          color: var(--primary-color);
+        }
+      }
       .action-switch {
         display: flex;
         align-items: center;

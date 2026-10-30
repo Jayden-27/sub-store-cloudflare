@@ -136,6 +136,22 @@
               >
                 <font-awesome-icon icon="fa-solid fa-clone" />
               </button>
+              <button
+                class="copy-sub-link"
+                :aria-label="t('subPage.actions.showQr')"
+                :title="t('subPage.actions.showQr')"
+                @click.stop="onClickShowQr"
+              >
+                <font-awesome-icon icon="fa-solid fa-qrcode" />
+              </button>
+              <button
+                class="copy-sub-link"
+                :aria-label="t('subPage.actions.testLink')"
+                :title="t('subPage.actions.testLink')"
+                @click.stop="onClickTestLink"
+              >
+                <font-awesome-icon icon="fa-solid fa-vial" />
+              </button>
             </template>
             <!-- 刷新 -->
             <button
@@ -246,6 +262,13 @@
             <span>{{ remarkText }}</span>
           </p>
         </template>
+        <p
+          v-if="fetchStatus"
+          class="sub-item-remark fetch-status"
+          :class="{ 'is-error': fetchStatus.isError }"
+        >
+          <span :title="fetchStatus.text">{{ fetchStatus.text }}</span>
+        </p>
       </div>
     </div>
     <!-- 加入判断 开启拖动不显示 -->
@@ -365,6 +388,48 @@
       :desc="t('subPage.panel.tips.desc')"
     />
   </nut-dialog>
+  <nut-dialog
+    v-model:visible="linkTestVisible"
+    pop-class="auto-dialog"
+    :title="t('subPage.linkTest.title')"
+    close-on-popstate
+    close-on-click-overlay
+    :lock-scroll="false"
+    no-ok-btn
+    no-cancel-btn
+  >
+    <div class="link-test">
+      <p v-if="linkTestLoading" class="link-test__loading">{{ t("subPage.linkTest.loading") }}</p>
+      <template v-else-if="linkTestResult">
+        <p class="link-test__status" :class="{ 'is-error': linkTestResult.status !== 'ok' }">
+          {{ linkTestStatusText }}
+        </p>
+        <p v-if="linkTestResult.message" class="link-test__message">{{ linkTestResult.message }}</p>
+        <ul v-if="linkTestResult.status === 'ok'" class="link-test__facts">
+          <li>{{ t("subPage.linkTest.nodes", { count: linkTestResult.nodes }) }}</li>
+          <li>{{ t("subPage.linkTest.size", { size: formatBytes(linkTestResult.bytes) }) }}</li>
+          <li>{{ t("subPage.linkTest.duration", { ms: linkTestResult.durationMs }) }}</li>
+          <li>{{ t("subPage.linkTest.target", { target: linkTestResult.target }) }}</li>
+        </ul>
+        <pre v-if="linkTestResult.preview" class="link-test__preview">{{ linkTestResult.preview }}</pre>
+      </template>
+    </div>
+  </nut-dialog>
+  <nut-dialog
+    v-model:visible="qrVisible"
+    pop-class="auto-dialog"
+    :title="t('subPage.qr.title')"
+    close-on-popstate
+    close-on-click-overlay
+    :lock-scroll="false"
+    no-ok-btn
+    no-cancel-btn
+  >
+    <div class="link-qr">
+      <canvas ref="qrCanvasRef" class="link-qr__canvas"></canvas>
+      <p class="link-qr__url">{{ qrUrl }}</p>
+    </div>
+  </nut-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -372,12 +437,14 @@ import { Dialog, Toast } from "@nutui/nutui";
 import { useClipboard } from "@vueuse/core";
 import dayjs from "dayjs";
 import { storeToRefs } from "pinia";
-import { computed, ref, toRaw } from "vue";
+import { computed, nextTick, ref, toRaw } from "vue";
 import useV3Clipboard from "vue-clipboard3";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 
 import { useCloudflareApi } from "@/api/app";
+import { butifyDate } from "@/utils/butifyDate";
+import QRCode from "qrcode";
 import logoIcon from "@/assets/icons/logo.png";
 import logoRedIcon from "@/assets/icons/logo-red.png";
 import PreviewPanel from "@/components/PreviewPanel.vue";
@@ -408,6 +475,24 @@ let scrollTop = 0;
 const compareTableIsVisible = ref(false);
 usePopupRoute(compareTableIsVisible);
 const previewPanelVisible = ref(false);
+const qrVisible = ref(false);
+const qrUrl = ref("");
+const qrCanvasRef = ref<HTMLCanvasElement>();
+const linkTestVisible = ref(false);
+const linkTestLoading = ref(false);
+const linkTestResult = ref<any>(null);
+const linkTestStatusText = computed(() => {
+  const status = linkTestResult.value?.status;
+  if (status === "ok") return t("subPage.linkTest.ok");
+  if (status === "not-found") return t("subPage.linkTest.notFound");
+  return t("subPage.linkTest.failed");
+});
+const formatBytes = (bytes?: number) => {
+  if (!bytes) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
 
 const moreAction = ref();
 const swipe = ref();
@@ -446,8 +531,26 @@ const remarkText = computed(() => {
     return "";
   }
 });
-const shouldInlineRemarkInSecondLine = computed(() => {
-  return Boolean(
+const fetchStatus = computed(() => {
+  if (props.type !== "sub") return undefined;
+  const sub = props.sub as
+    | (Sub & { lastFetchedAt?: number; lastError?: string; lastNodeCount?: number; lastCacheStatus?: string })
+    | undefined;
+  if (!sub || sub.source !== "remote") return undefined;
+  if (sub.lastError) {
+    const suffix = sub.lastFetchedAt
+      ? ` · ${t("subPage.fetchStatus.lastSuccess", { time: butifyDate(sub.lastFetchedAt) })}`
+      : "";
+    return { isError: true, text: `${t("subPage.fetchStatus.failed", { error: sub.lastError })}${suffix}` };
+  }
+  if (!sub.lastFetchedAt) return undefined;
+  const parts = [t("subPage.fetchStatus.lastFetch", { time: butifyDate(sub.lastFetchedAt) })];
+  if (typeof sub.lastNodeCount === "number") parts.push(t("subPage.fetchStatus.nodes", { count: sub.lastNodeCount }));
+  if (sub.lastCacheStatus === "stale") parts.push(t("subPage.fetchStatus.stale"));
+  return { isError: false, text: parts.join(" · ") };
+});
+
+const shouldInlineRemarkInSecondLine = computed(() => {  return Boolean(
     props.isDualColumn
     && appearanceSetting.value.isSimpleMode
     && remarkText.value
@@ -963,6 +1066,48 @@ const onClickOpenDownload = async () => {
   closeExpandedMenu();
 };
 
+const onClickShowQr = async () => {
+  closeExpandedMenu();
+  const res = await cloudflareApi.getDownloadLink(props.type, name);
+  const url = res?.data?.status === "success" && res.data.data?.url
+    ? res.data.data.url
+    : `${host.value}/download/${
+      props.type === "collection" ? "collection/" : "source/"
+    }${encodeURIComponent(name)}`;
+  qrUrl.value = url;
+  qrVisible.value = true;
+  await nextTick();
+  if (qrCanvasRef.value) {
+    await QRCode.toCanvas(qrCanvasRef.value, url, { width: 240, margin: 1 });
+  }
+};
+
+const onClickTestLink = async () => {
+  closeExpandedMenu();
+  linkTestVisible.value = true;
+  linkTestLoading.value = true;
+  linkTestResult.value = null;
+  try {
+    const res = await cloudflareApi.testLink({ type: props.type, id: name, target: "mihomo" });
+    const payload = res?.data;
+    if (payload?.status === "success") {
+      linkTestResult.value = payload.data;
+    } else {
+      linkTestResult.value = {
+        status: "error",
+        message: payload?.status === "failed" ? payload.error.message : undefined,
+      };
+    }
+  } catch (error: any) {
+    linkTestResult.value = {
+      status: "error",
+      message: error?.response?.data?.error?.message || String(error),
+    };
+  } finally {
+    linkTestLoading.value = false;
+  }
+};
+
 const onClickRefresh = async () => {
   Toast.loading(t("globalNotify.refresh.loading"), {
     cover: true,
@@ -1276,6 +1421,69 @@ const refreshSubFlowsIfNeeded = async () => {
 .subs-list-wrapper {
   margin-bottom: 36px;
   position: relative;
+}
+
+.fetch-status.is-error span {
+  color: var(--danger-color, #ff4444);
+}
+
+.link-test {
+  text-align: left;
+  font-size: 13px;
+}
+
+.link-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.link-qr__canvas {
+  width: 240px;
+  height: 240px;
+}
+
+.link-qr__url {
+  margin: 0;
+  font-size: 12px;
+  color: var(--comment-text-color);
+  word-break: break-all;
+  text-align: center;
+}
+
+.link-test__status {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.link-test__status.is-error {
+  color: var(--danger-color, #ff4444);
+}
+
+.link-test__message {
+  margin: 0 0 8px;
+  color: var(--danger-color, #ff4444);
+  word-break: break-word;
+}
+
+.link-test__facts {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: var(--second-text-color);
+}
+
+.link-test__preview {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  background: var(--card-color);
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .sub-img-wrappers {

@@ -34,6 +34,7 @@
     "js-yaml": "^4.2.0",
     "modern-css-reset": "^1.4.0",
     "pinia": "^2.0.14",
+    "qrcode": "^1.5.4",
     "vue": "^3.5.39",
     "vue-clipboard3": "^2.0.0",
     "vue-i18n": "^9.14.5",

@@ -471,6 +471,7 @@
         ref="actionBlockRef"
         :checked="actionsChecked"
         :list="actionsList"
+        :step-counts="previewSteps"
         @updateCustomNameModeFlag="updateCustomNameModeFlag"
         @addAction="addAction"
         @deleteAction="deleteAction"
@@ -850,6 +851,7 @@ const selectedSubsDisplay = computed(() => selectedSubs.value.replace(/^:\s*/, "
   const compareTableIsVisible = ref(false);
   usePopupRoute(compareTableIsVisible);
   const compareData = ref();
+  const previewSteps = ref<Array<{ index: number; before: number; after: number; type: string }> | null>(null);
   const templateOptions = ref<any[]>([]);
   const showTemplatePicker = ref(false);
   const selectedTemplateValue = ref<string[]>([]);
@@ -864,7 +866,7 @@ const selectedSubsDisplay = computed(() => selectedSubs.value.replace(/^:\s*/, "
   const templateColumns = computed(() => {
     return templateOptions.value.map((template) => {
       const label = template.displayName || template.name;
-      const type = template.readonly
+      const type = template.builtin
         ? t("editorPage.subConfig.basic.template.builtIn")
         : t("editorPage.subConfig.basic.template.custom");
       return {
@@ -889,6 +891,7 @@ const isInit = ref(false);
 const ruleForm = ref<any>(null);
 const actionsChecked = reactive([]);
 const actionsList = reactive([]);
+watch(actionsList, () => { previewSteps.value = null; }, { deep: true });
 const isget = ref(false);
 const fileInput = ref(null);
 const localPreviewLoading = ref(false);
@@ -1253,12 +1256,15 @@ const fetchCompareData = async () => {
     const res = await cloudflareApi.previewItem(type, data);
     if (res?.data?.status === "success") {
       compareData.value = res.data.data;
+      previewSteps.value = Array.isArray((res.data.data as any)?.steps) ? (res.data.data as any).steps : null;
     } else {
       compareData.value = null;
+      previewSteps.value = null;
     }
   } catch (e) {
     console.error(e);
     compareData.value = null;
+    previewSteps.value = null;
   }
   Toast.hide("compare");
 };
@@ -1513,7 +1519,7 @@ const urlValidator = (val: string): Promise<boolean> => {
     Dialog({
         title: selectedTemplateLabel.value,
         content: t("editorPage.subConfig.basic.template.tips", {
-          type: template?.readonly
+          type: template?.builtin
             ? t("editorPage.subConfig.basic.template.builtIn")
             : t("editorPage.subConfig.basic.template.custom"),
           target: template?.target || "mihomo",

@@ -22,6 +22,35 @@
     </section>
 
     <section class="tool-card">
+      <h2>{{ t('toolsPage.upstreamImport.title') }}</h2>
+      <p>{{ t('toolsPage.upstreamImport.desc') }}</p>
+      <input
+        ref="upstreamFileInput"
+        type="file"
+        accept=".json,.txt,application/json,text/plain"
+        @change="onUpstreamFileChange"
+      />
+      <div class="actions">
+        <nut-button plain type="primary" @click="selectUpstreamFile">{{ t('toolsPage.upstreamImport.selectFile') }}</nut-button>
+        <nut-button
+          type="primary"
+          :loading="upstreamImporting"
+          :disabled="!upstreamPlan || (upstreamPlan.sources.length === 0 && upstreamPlan.collections.length === 0)"
+          @click="applyUpstreamImport"
+        >
+          {{ t('toolsPage.upstreamImport.apply') }}
+        </nut-button>
+      </div>
+      <p v-if="upstreamError" class="stats is-error">{{ upstreamError }}</p>
+      <template v-if="upstreamPlan">
+        <p class="stats">
+          {{ t('toolsPage.upstreamImport.summary', { sources: upstreamPlan.sources.length, collections: upstreamPlan.collections.length }) }}
+        </p>
+        <p v-for="warning in upstreamWarnings" :key="warning" class="stats is-warning">{{ warning }}</p>
+      </template>
+    </section>
+
+    <section class="tool-card">
       <h2>{{ t('toolsPage.shares.title') }}</h2>
       <p>{{ t('toolsPage.shares.desc') }}</p>
       <div class="row share-form">
@@ -96,10 +125,71 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useCloudflareApi } from '@/api/app';
 import { useAppNotifyStore } from '@/store/appNotify';
+import { planUpstreamImport, type UpstreamImportPlan } from '@/utils/upstreamImport';
 
 const { t } = useI18n();
 const api = useCloudflareApi();
 const { showNotify } = useAppNotifyStore();
+const upstreamFileInput = ref<HTMLInputElement>();
+const upstreamPlan = ref<UpstreamImportPlan | null>(null);
+const upstreamError = ref('');
+const upstreamImporting = ref(false);
+const selectUpstreamFile = () => upstreamFileInput.value?.click();
+const upstreamWarnings = computed(() => (upstreamPlan.value?.warnings || []).map((code) => {
+  const [key, count] = code.split(':');
+  const labels: Record<string, string> = {
+    UNSUPPORTED_ACTIONS: t('toolsPage.upstreamImport.warnUnsupported', { count }),
+    MISSING_SOURCES: t('toolsPage.upstreamImport.warnMissing', { count }),
+    SKIPPED_EXISTING: t('toolsPage.upstreamImport.warnSkipped', { count }),
+    TEMPLATE_RESET: t('toolsPage.upstreamImport.warnTemplate', { count }),
+  };
+  return labels[key] || code;
+}));
+const onUpstreamFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  upstreamError.value = '';
+  try {
+    const text = await file.text();
+    const [sourcesRes, collectionsRes] = await Promise.all([api.getSources(), api.getCollections()]);
+    const existingSources = sourcesRes?.data?.status === 'success' ? sourcesRes.data.data.map((item: any) => item.name) : [];
+    const existingCollections = collectionsRes?.data?.status === 'success' ? collectionsRes.data.data.map((item: any) => item.name) : [];
+    upstreamPlan.value = planUpstreamImport(text, existingSources, existingCollections);
+  } catch (error: any) {
+    upstreamPlan.value = null;
+    const code = error?.message || '';
+    upstreamError.value = code === 'EMPTY'
+      ? t('toolsPage.upstreamImport.errorEmpty')
+      : code === 'NO_ITEMS'
+        ? t('toolsPage.upstreamImport.errorNoItems')
+        : t('toolsPage.upstreamImport.errorInvalid');
+  }
+};
+const applyUpstreamImport = async () => {
+  const plan = upstreamPlan.value;
+  if (!plan) return;
+  upstreamImporting.value = true;
+  try {
+    for (const source of plan.sources) {
+      await api.createItem('sub', { ...source, name: source.id, displayName: source.displayName } as any);
+    }
+    for (const collection of plan.collections) {
+      await api.createItem('collection', { ...collection, id: collection.id, name: collection.displayName } as any);
+    }
+    showNotify({
+      type: 'success',
+      title: t('toolsPage.upstreamImport.applySucceed', { sources: plan.sources.length, collections: plan.collections.length }),
+    });
+    upstreamPlan.value = null;
+    await loadShares();
+  } catch (error: any) {
+    showNotify({ type: 'danger', title: t('toolsPage.upstreamImport.applyFailed', { e: error?.response?.data?.error?.message || String(error) }) });
+  } finally {
+    upstreamImporting.value = false;
+  }
+};
 const proxyTargets = ['mihomo', 'stash', 'surge', 'surge-mac', 'surfboard', 'loon', 'egern', 'shadowrocket', 'qx', 'sing-box', 'v2ray', 'uri', 'json'];
 const ruleTargets = ['mihomo', 'surge', 'loon', 'qx'];
 const conversionKind = ref<'proxy' | 'rule'>('proxy');
@@ -228,6 +318,8 @@ textarea { width: 100%; min-height: 150px; padding: 10px; resize: vertical; font
 .list-item div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .list-item strong { color: var(--primary-text-color); font-size: 13px; overflow-wrap: anywhere; }
 .list-item small, .stats, .empty { color: var(--comment-text-color); }
+.stats.is-error { color: var(--danger-color, #ff4444); }
+.stats.is-warning { color: #d48806; }
 @media (max-width: 720px) { .share-form { flex-direction: column; align-items: stretch; } .share-field { flex-basis: auto; } }
 @media (max-width: 520px) { .row { flex-direction: column; } .list-item { align-items: flex-start; flex-direction: column; padding: 10px 0; } }
 </style>

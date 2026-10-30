@@ -59,21 +59,31 @@
           </nut-button>
         </div>
       </div>
+      <p
+        v-if="templateSyncSummary"
+        class="template-sync-summary"
+        :class="{ 'is-error': templateSyncSummary.failed > 0 }"
+      >
+        {{ templateSyncSummary.text }}
+      </p>
       <div class="template-list">
         <div v-for="template in templates" :key="template.name" class="template-item">
           <div class="template-text">
             <span class="template-title">{{ template.displayName || template.name }}</span>
-            <span class="template-meta">
-              {{ template.readonly ? t("myPage.templates.builtIn") : t("myPage.templates.custom") }}
+            <span class="template-meta" :class="{ 'is-error': Boolean(template.syncError) }">
+              {{ templateStatusLabel(template) }}
               · {{ getTargetLabel(template.target || "mihomo") }}
             </span>
           </div>
           <div class="template-actions">
-            <nut-button v-if="!template.readonly" plain type="primary" size="mini" @click="openTemplateEdit(template)">
+            <nut-button v-if="template.remoteUrl" plain type="success" size="mini" @click="syncTemplate(template)">
+              {{ t("myPage.templates.sync") }}
+            </nut-button>
+            <nut-button plain type="primary" size="mini" @click="openTemplateEdit(template)">
               {{ t("myPage.btn.edit") }}
             </nut-button>
-            <nut-button v-if="!template.readonly" plain type="danger" size="mini" @click="deleteCustomTemplate(template.name)">
-              {{ t("myPage.btn.delete") }}
+            <nut-button plain type="default" size="mini" @click="openTemplateActions(template)">
+              {{ t("myPage.templates.more") }}
             </nut-button>
           </div>
         </div>
@@ -205,6 +215,17 @@
               <nut-icon name="rect-right" size="12px" />
             </span>
           </div>
+          <div class="template-form__row">
+            <span class="template-form__label">{{ t("myPage.templates.remoteUrl") }}</span>
+            <nut-input
+              class="template-form__input"
+              v-model.trim="templateForm.remoteUrl"
+              :border="false"
+              :placeholder="t('myPage.templates.remoteUrlPlaceholder')"
+              input-align="right"
+              :aria-label="t('myPage.templates.remoteUrl')"
+            />
+          </div>
         </div>
         <div class="template-content-editor">
           <CmView v-if="templateImportVisible" :is-read-only="false" :language="templateEditorLanguage" id="TemplateEditor" />
@@ -212,6 +233,51 @@
         <nut-button block type="primary" :loading="templateImporting" @click="saveTemplate">
           {{ t("myPage.templates.save") }}
         </nut-button>
+      </div>
+    </nut-popup>
+    <nut-popup
+      :visible="sourceViewVisible"
+      :position="isWideScreen ? 'center' : 'bottom'"
+      :style="templatePopupStyle"
+      :z-index="1900"
+      round
+      closeable
+      @update:visible="(value: boolean) => (sourceViewVisible = value)"
+    >
+      <div
+        class="template-import-panel"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('myPage.templates.sourceTitle')"
+      >
+        <h2>{{ t("myPage.templates.sourceTitle") }}</h2>
+        <p v-if="sourceViewUrl" class="template-source-url">{{ sourceViewUrl }}</p>
+        <p v-if="sourceViewError" class="template-source-error">{{ sourceViewError }}</p>
+        <div class="template-content-editor">
+          <CmView v-if="sourceViewVisible" :is-read-only="true" :language="sourceViewLanguage" id="TemplateSourceView" />
+        </div>
+      </div>
+    </nut-popup>
+    <nut-popup
+      v-model:visible="templateActionVisible"
+      position="bottom"
+      round
+      :style="{ padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }"
+      z-index="1900"
+    >
+      <div class="template-action-menu">
+        <p class="template-action-menu__title">{{ templateActionTitle }}</p>
+        <button
+          v-for="item in templateActionItems"
+          :key="item.value"
+          class="template-action-menu__item"
+          @click="onTemplateActionChoose(item)"
+        >
+          {{ item.text }}
+        </button>
+        <button class="template-action-menu__item is-cancel" @click="templateActionVisible = false">
+          {{ t("myPage.btn.cancel") }}
+        </button>
       </div>
     </nut-popup>
     <DesktopPicker
@@ -233,6 +299,7 @@ import { useI18n } from "vue-i18n";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
 
 import { useCloudflareApi } from "@/api/app";
+import { butifyDate } from "@/utils/butifyDate";
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton.vue";
 import DesktopPicker from "@/components/DesktopPicker.vue";
 import { useSettingsApi } from "@/api/settings";
@@ -332,6 +399,7 @@ const templateForm = reactive({
   id: "",
   name: "",
   target: "mihomo",
+  remoteUrl: "",
 });
 const selectedTemplateTargetValue = ref<string[]>([]);
 const templateTargetColumns = computed(() => {
@@ -468,6 +536,7 @@ const openTemplateImport = () => {
   templateForm.id = "";
   templateForm.name = "";
   templateForm.target = "mihomo";
+  templateForm.remoteUrl = "";
   templateEditorLanguage.value = "yaml";
   cmStore.setEditCode(TEMPLATE_EDITOR_ID, "");
   templateImportVisible.value = true;
@@ -480,6 +549,7 @@ const openTemplateEdit = (template: any) => {
   templateForm.id = template.name;
   templateForm.name = template.displayName || template.name;
   templateForm.target = template.target || "mihomo";
+  templateForm.remoteUrl = template.remoteUrl || "";
   const isSingBox = templateForm.target === "sing-box";
   templateEditorLanguage.value = isSingBox ? "json" : "yaml";
   cmStore.setEditCode(
@@ -501,6 +571,7 @@ const importTemplateFromFile = async (event: Event) => {
   templateForm.id = file.name.replace(/\.(json|ya?ml)$/i, "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
   templateForm.name = file.name.replace(/\.(json|ya?ml)$/i, "");
   templateForm.target = "mihomo";
+  templateForm.remoteUrl = "";
   const content = await file.text();
   templateEditorLanguage.value = /^[{[]/.test(content.trim()) ? "json" : "yaml";
   cmStore.setEditCode(TEMPLATE_EDITOR_ID, content);
@@ -538,6 +609,7 @@ const saveTemplate = async () => {
       name: templateForm.name || templateForm.id,
       target: templateForm.target,
       content,
+      remoteUrl: templateForm.remoteUrl.trim(),
     };
     const res = templateEditingId.value
       ? await cloudflareApi.updateTemplate(templateEditingId.value, payload)
@@ -553,13 +625,63 @@ const saveTemplate = async () => {
   }
 };
 
+const templateStatusLabel = (template: any) => {
+  if (template.syncError) return t("myPage.templates.status.failed");
+  if (!template.builtin) return t("myPage.templates.status.custom");
+  if (template.dirty) return t("myPage.templates.status.modified");
+  if (template.lastSyncedAt) return t("myPage.templates.status.synced");
+  return t("myPage.templates.status.default");
+};
+
+const templateSyncSummary = computed(() => {
+  const failed = templates.value.filter((item: any) => Boolean(item.syncError)).length;
+  if (failed > 0) {
+    return { failed, text: t("myPage.templates.syncSummaryFailed", { count: failed }) };
+  }
+  const times = templates.value
+    .map((item: any) => Number(item.lastSyncedAt) || 0)
+    .filter((value: number) => value > 0);
+  if (times.length === 0) return null;
+  return { failed: 0, text: t("myPage.templates.syncSummaryOk", { time: butifyDate(Math.max(...times)) }) };
+});
+
+const templateActionVisible = ref(false);
+const templateActionTarget = ref<any>(null);
+const templateActionTitle = computed(() =>
+  templateActionTarget.value ? templateActionTarget.value.displayName || templateActionTarget.value.name : "",
+);
+const templateActionItems = computed(() => {
+  const template = templateActionTarget.value;
+  if (!template) return [];
+  const items: Array<{ text: string; value: string }> = [];
+  if (template.remoteUrl) items.push({ text: t("myPage.templates.viewSource"), value: "view" });
+  if (template.builtin) items.push({ text: t("myPage.templates.reset"), value: "reset" });
+  items.push({ text: t("myPage.templates.deleteAction"), value: "delete" });
+  return items;
+});
+const openTemplateActions = (template: any) => {
+  templateActionTarget.value = template;
+  templateActionVisible.value = true;
+};
+const onTemplateActionChoose = (item: { value?: string }) => {
+  const template = templateActionTarget.value;
+  templateActionVisible.value = false;
+  if (!template) return;
+  if (item?.value === "view") void viewTemplateSource(template);
+  else if (item?.value === "reset") resetTemplate(template);
+  else if (item?.value === "delete") void deleteCustomTemplate(template.name);
+};
+
 const getTemplateReferences = async (name: string) => {
   try {
     const res = await cloudflareApi.getCollections();
     const collections = res?.data?.status === "success" && Array.isArray(res.data.data) ? res.data.data : [];
     return collections
       .filter((collection) => collection.templateId === name)
-      .map((collection) => collection.displayName || collection.name || collection.id);
+      .map((collection) => ({
+        id: collection.name,
+        label: collection.displayName || collection.name || collection.id,
+      }));
   } catch {
     return [];
   }
@@ -572,12 +694,15 @@ const deleteCustomTemplate = async (name: string) => {
       title: t("myPage.templates.deleteBlockedTitle"),
       content: t("myPage.templates.deleteBlockedContent", {
         name,
-        collections: references.join(locale.value.startsWith("zh") ? "、" : ", "),
+        collections: references.map((item) => item.label).join(locale.value.startsWith("zh") ? "、" : ", "),
       }),
       popClass: "auto-dialog",
-      okText: t("specificWord.confirm"),
-      noCancelBtn: true,
+      okText: t("myPage.templates.deleteBlockedGo"),
+      cancelText: t("myPage.btn.cancel"),
       closeOnClickOverlay: true,
+      onOk: () => {
+        router.push(`/edit/collections/${encodeURIComponent(references[0].id)}`);
+      },
     });
     return;
   }
@@ -600,6 +725,92 @@ const deleteCustomTemplate = async (name: string) => {
       }
     },
   });
+};
+
+const resetTemplate = (template: any) => {
+  Dialog({
+    title: t("myPage.templates.resetTitle"),
+    content: t("myPage.templates.resetContent", { name: template.displayName || template.name }),
+    popClass: "auto-dialog",
+    okText: t("myPage.templates.reset"),
+    cancelText: t("myPage.btn.cancel"),
+    closeOnClickOverlay: true,
+    onOk: async () => {
+      try {
+        const res = await cloudflareApi.resetTemplate(template.name);
+        if (res?.data?.status !== "success") throw new Error("reset failed");
+        await fetchTemplates();
+        showNotify({ type: "success", title: t("myPage.templates.resetSucceed") });
+      } catch (error) {
+        showNotify({ type: "danger", title: t("myPage.templates.resetFailed", { e: errorMessage(error) }) });
+      }
+    },
+  });
+};
+
+const syncTemplate = async (template: any, force = false) => {
+  try {
+    const res = await cloudflareApi.syncTemplate(template.name, force);
+    if (res?.data?.status !== "success") throw new Error("sync failed");
+    await fetchTemplates();
+    showNotify({ type: "success", title: t("myPage.templates.syncSucceed") });
+  } catch (error: any) {
+    if (error?.response?.status === 409 && !force) {
+      Dialog({
+        title: t("myPage.templates.syncConflictTitle"),
+        content: t("myPage.templates.syncConflictContent", { name: template.displayName || template.name }),
+        popClass: "auto-dialog",
+        okText: t("myPage.templates.sync"),
+        cancelText: t("myPage.btn.cancel"),
+        closeOnClickOverlay: true,
+        onOk: () => syncTemplate(template, true),
+      });
+      return;
+    }
+    const message = error?.response?.data?.error?.message || errorMessage(error);
+    showNotify({ type: "danger", title: t("myPage.templates.syncFailed", { e: message }) });
+  }
+};
+
+const TEMPLATE_SOURCE_VIEW_ID = "TemplateSourceView";
+const sourceViewVisible = ref(false);
+const sourceViewUrl = ref("");
+const sourceViewError = ref("");
+const sourceViewLanguage = ref<"yaml" | "json">("yaml");
+
+const viewTemplateSource = async (template: any) => {
+  sourceViewVisible.value = true;
+  sourceViewUrl.value = template.remoteUrl || "";
+  sourceViewError.value = "";
+  sourceViewLanguage.value = "yaml";
+  cmStore.setEditCode(TEMPLATE_SOURCE_VIEW_ID, "");
+  try {
+    const res = await cloudflareApi.getTemplateSource(template.name);
+    const payload = res?.data;
+    if (!payload || payload.status !== "success") {
+      throw new Error(payload?.status === "failed" ? payload.error.message : "load failed");
+    }
+    const data = payload.data as { url?: string; content?: string };
+    sourceViewUrl.value = data.url || sourceViewUrl.value;
+    const content = data.content || "";
+    sourceViewLanguage.value = /^[{[]/.test(content.trim()) ? "json" : "yaml";
+    cmStore.setEditCode(TEMPLATE_SOURCE_VIEW_ID, content);
+  } catch (error: any) {
+    sourceViewError.value = error?.response?.data?.error?.message || errorMessage(error);
+  }
+};
+
+const syncTemplatesLazy = async () => {  try {
+    const res = await cloudflareApi.syncTemplates();
+    const payload = res?.data;
+    if (!payload || payload.status !== "success") return;
+    const synced = (payload.data as any)?.synced;
+    if (Array.isArray(synced) && synced.some((item: any) => item.status === "updated" || item.status === "error")) {
+      await fetchTemplates();
+    }
+  } catch {
+    // Lazy sync is best-effort; the manual button surfaces errors.
+  }
 };
 
 const restoreFromFile = async (event: Event) => {
@@ -690,6 +901,7 @@ const onBeforeUnload = (event: BeforeUnloadEvent) => {
 
 onMounted(() => {
   fetchTemplates();
+  void syncTemplatesLazy();
   window.addEventListener("beforeunload", onBeforeUnload);
 });
 onBeforeUnmount(() => {
@@ -870,6 +1082,63 @@ onBeforeUnmount(() => {
     margin: 0 0 4px;
     font-size: 17px;
     color: var(--primary-text-color);
+  }
+}
+
+.template-source-url {
+  margin: 0;
+  font-size: 12px;
+  color: var(--comment-text-color);
+  word-break: break-all;
+}
+
+.template-source-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger-color, #ff4444);
+}
+
+.template-sync-summary {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--comment-text-color);
+}
+
+.template-sync-summary.is-error {
+  color: var(--danger-color, #ff4444);
+}
+
+.template-meta.is-error {
+  color: var(--danger-color, #ff4444);
+}
+
+.template-action-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.template-action-menu__title {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--comment-text-color);
+}
+
+.template-action-menu__item {
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-top: 1px solid var(--border-color, #eee);
+  background: transparent;
+  color: var(--primary-text-color);
+  font-size: 15px;
+
+  &.is-cancel {
+    margin-top: 8px;
+    border-top: none;
+    border-radius: 8px;
+    background: var(--card-color);
+    color: var(--second-text-color);
   }
 }
 

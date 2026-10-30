@@ -53,6 +53,55 @@
       </nut-popup>
     </div>
     <SmartImportPopup v-model:visible="smartImportVisible" @imported="onSmartImported" />
+    <nut-popup
+      v-model:visible="batchVisible"
+      position="bottom"
+      round
+      closeable
+      :style="{ height: '72vh', padding: '16px 12px calc(16px + env(safe-area-inset-bottom))' }"
+      z-index="11000"
+    >
+      <div class="batch-panel">
+        <div class="batch-tabs">
+          <button :class="{ current: batchType === 'sub' }" @click="switchBatchType('sub')">
+            {{ $t('subPage.batch.sources') }}
+          </button>
+          <button :class="{ current: batchType === 'collection' }" @click="switchBatchType('collection')">
+            {{ $t('subPage.batch.collections') }}
+          </button>
+        </div>
+        <label class="batch-all">
+          <nut-checkbox :model-value="allBatchSelected" @change="toggleBatchAll" />
+          <span>{{ $t('subPage.batch.selectAll') }}</span>
+          <small>{{ $t('subPage.batch.selected', { count: batchSelected.length }) }}</small>
+        </label>
+        <ul class="batch-list">
+          <li v-for="item in batchItems" :key="item.name">
+            <nut-checkbox :model-value="batchSelected.includes(item.name)" @change="() => toggleBatchItem(item.name)" />
+            <span class="batch-name">{{ item.displayName || item.name }}</span>
+            <small class="batch-state">{{ itemEnabled(item) ? $t('subPage.batch.enabled') : $t('subPage.batch.disabled') }}</small>
+          </li>
+          <li v-if="batchItems.length === 0" class="batch-empty">{{ $t('subPage.batch.empty') }}</li>
+        </ul>
+        <div class="batch-tag-row">
+          <input v-model="batchTag" :placeholder="$t('subPage.batch.tagPlaceholder')" />
+          <nut-button size="small" plain type="primary" :disabled="!batchTag.trim() || batchSelected.length === 0" @click="batchAddTag">
+            {{ $t('subPage.batch.addTag') }}
+          </nut-button>
+        </div>
+        <div class="batch-actions">
+          <nut-button size="small" plain type="primary" :disabled="batchSelected.length === 0" @click="batchSetEnabled(true)">
+            {{ $t('subPage.batch.enable') }}
+          </nut-button>
+          <nut-button size="small" plain type="info" :disabled="batchSelected.length === 0" @click="batchSetEnabled(false)">
+            {{ $t('subPage.batch.disable') }}
+          </nut-button>
+          <nut-button size="small" plain type="danger" :disabled="batchSelected.length === 0" @click="batchDelete">
+            {{ $t('subPage.batch.delete') }}
+          </nut-button>
+        </div>
+      </div>
+    </nut-popup>
     <!-- 浮动按钮 -->
     <Teleport to="body">
       <div v-if="hasSubs || hasCollections" class="drag-btn-wrapper">
@@ -91,6 +140,11 @@
             @click="addSub"
           >
             <font-awesome-icon icon="fa-solid fa-plus" />
+          </div>
+
+          <!-- 批量操作 -->
+          <div class="drag-btn" @click="openBatch">
+            <font-awesome-icon icon="fa-solid fa-list-check" />
           </div>
         </nut-drag>
       </div>
@@ -316,6 +370,91 @@ const systemStore = useSystemStore();
 const settingsStore = useSettingsStore();
 const listSearchStore = useListSearchStore();
 const { hasSubs, hasCollections, subs, collections } = storeToRefs(subsStore);
+
+const batchVisible = ref(false);
+const batchType = ref<"sub" | "collection">("sub");
+const batchSelected = ref<string[]>([]);
+const batchTag = ref("");
+const batchItems = computed(() => (batchType.value === "sub" ? subs.value : collections.value));
+const allBatchSelected = computed(() =>
+  batchItems.value.length > 0 && batchItems.value.every((item: any) => batchSelected.value.includes(item.name)),
+);
+const openBatch = () => {
+  batchVisible.value = true;
+  batchSelected.value = [];
+};
+const switchBatchType = (type: "sub" | "collection") => {
+  batchType.value = type;
+  batchSelected.value = [];
+};
+const toggleBatchItem = (name: string) => {
+  const index = batchSelected.value.indexOf(name);
+  if (index >= 0) batchSelected.value.splice(index, 1);
+  else batchSelected.value.push(name);
+};
+const toggleBatchAll = () => {
+  batchSelected.value = allBatchSelected.value ? [] : batchItems.value.map((item: any) => item.name);
+};
+const batchApply = async (mutate: (item: any) => any) => {
+  const type = batchType.value;
+  const items = batchItems.value.filter((item: any) => batchSelected.value.includes(item.name));
+  let failed = 0;
+  for (const item of items) {
+    try {
+      await cloudflareApi.editItem(type, item.name, mutate(item));
+    } catch {
+      failed += 1;
+    }
+  }
+  await subsStore.fetchSubsData();
+  batchSelected.value = [];
+  showNotify({
+    type: failed > 0 ? "warning" : "success",
+    title: failed > 0
+      ? t("subPage.batch.partialFailed", { count: failed })
+      : t("subPage.batch.done", { count: items.length }),
+  });
+};
+const batchSetEnabled = (enabled: boolean) => batchApply((item) => ({ ...item, enabled }));
+const itemEnabled = (item: any) => item?.enabled !== false;
+const batchAddTag = async () => {
+  const tag = batchTag.value.trim();
+  if (!tag) return;
+  await batchApply((item) => ({
+    ...item,
+    tag: Array.from(new Set([...(Array.isArray(item.tag) ? item.tag : []), tag])),
+  }));
+  batchTag.value = "";
+};
+const batchDelete = () => {  const names = [...batchSelected.value];
+  if (names.length === 0) return;
+  const type = batchType.value;
+  Dialog({
+    title: t("subPage.batch.deleteTitle"),
+    content: t("subPage.batch.deleteContent", { count: names.length }),
+    popClass: "auto-dialog",
+    okText: t("subPage.batch.delete"),
+    cancelText: t("subPage.batch.cancel"),
+    onOk: async () => {
+      let failed = 0;
+      for (const name of names) {
+        try {
+          await cloudflareApi.deleteItem(type, name);
+        } catch {
+          failed += 1;
+        }
+      }
+      await subsStore.fetchSubsData();
+      batchSelected.value = [];
+      showNotify({
+        type: failed > 0 ? "warning" : "success",
+        title: failed > 0
+          ? t("subPage.batch.partialFailed", { count: failed })
+          : t("subPage.batch.done", { count: names.length }),
+      });
+    },
+  });
+};
 const { appearanceSetting } = storeToRefs(settingsStore);
 const { effectiveListViewMode } = useListViewMode();
 const {
@@ -972,5 +1111,87 @@ const importTips = () => {
   .subs-list-content + .subs-list-content {
     margin-top: 8px;
   }
+}
+
+.batch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.batch-tabs {
+  display: flex;
+  gap: 8px;
+  button {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #ddd);
+    background: transparent;
+    color: var(--second-text-color);
+    &.current {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+  }
+}
+
+.batch-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  small {
+    margin-left: auto;
+    color: var(--comment-text-color);
+  }
+}
+
+.batch-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+  }
+  .batch-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .batch-state {
+    color: var(--comment-text-color);
+  }
+  .batch-empty {
+    justify-content: center;
+    color: var(--comment-text-color);
+  }
+}
+
+.batch-tag-row {
+  display: flex;
+  gap: 8px;
+  input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--primary-text-color);
+  }
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 </style>
