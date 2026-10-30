@@ -1,0 +1,83 @@
+# Mihomo Basic (mihomo)
+# Generated from cloudflare/src/lib/defaults.ts. Do not edit by hand; edit the source and rerun templates:export.
+mixedPort: 7890
+allowLan: false
+mode: rule
+logLevel: info
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+proxyGroups:
+  - name: 🚀 节点选择
+    type: select
+    proxies:
+      - ♻️ 自动选择
+      - 🚀 手动切换
+      - DIRECT
+  - name: ♻️ 自动选择
+    type: url-test
+    proxies:
+      - $all
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+  - name: 🚀 手动切换
+    type: select
+    proxies:
+      - $all
+  - name: 🌏 国外媒体
+    type: select
+    proxies:
+      - 🚀 节点选择
+      - ♻️ 自动选择
+      - 🚀 手动切换
+      - DIRECT
+  - name: 💬 AI 服务
+    type: select
+    proxies:
+      - 🚀 节点选择
+      - ♻️ 自动选择
+      - 🚀 手动切换
+      - DIRECT
+  - name: Ⓜ️ 微软服务
+    type: select
+    proxies:
+      - DIRECT
+      - 🚀 节点选择
+      - ♻️ 自动选择
+  - name: 🍎 苹果服务
+    type: select
+    proxies:
+      - DIRECT
+      - 🚀 节点选择
+      - ♻️ 自动选择
+  - name: 🎯 全球直连
+    type: select
+    proxies:
+      - DIRECT
+      - 🚀 节点选择
+  - name: 🛑 全球拦截
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+  - name: 🐟 漏网之鱼
+    type: select
+    proxies:
+      - 🚀 节点选择
+      - DIRECT
+ruleProviders: {}
+rules:
+  - DOMAIN-SUFFIX,openai.com,💬 AI 服务
+  - DOMAIN-SUFFIX,chatgpt.com,💬 AI 服务
+  - DOMAIN-SUFFIX,anthropic.com,💬 AI 服务
+  - DOMAIN-SUFFIX,claude.ai,💬 AI 服务
+  - DOMAIN-SUFFIX,netflix.com,🌏 国外媒体
+  - DOMAIN-SUFFIX,youtube.com,🌏 国外媒体
+  - DOMAIN-SUFFIX,googlevideo.com,🌏 国外媒体
+  - GEOIP,CN,🎯 全球直连
+  - MATCH,🐟 漏网之鱼

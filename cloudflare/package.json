@@ -10,6 +10,7 @@
     "check": "node ../scripts/generate-script-registry.mjs && pnpm run types:check && tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "node ../scripts/generate-script-registry.mjs && vitest run",
     "dev": "node ../scripts/generate-script-registry.mjs && wrangler dev",
+    "dev:migrate": "wrangler d1 migrations apply sub-store-cloudflare --local",
     "deploy": "node ../scripts/generate-script-registry.mjs && wrangler deploy --config wrangler.deploy.local.jsonc",
     "migrate:local": "wrangler d1 migrations apply sub-store-cloudflare --local --config wrangler.deploy.local.jsonc",
     "migrate:remote": "wrangler d1 migrations apply sub-store-cloudflare --remote --config wrangler.deploy.local.jsonc",

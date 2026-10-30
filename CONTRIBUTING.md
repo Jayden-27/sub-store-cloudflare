@@ -27,6 +27,7 @@ Requires Node.js 22 and pnpm 11.
 pnpm run setup
 cp cloudflare/.dev.vars.example cloudflare/.dev.vars
 pnpm run build:frontend
+pnpm --dir cloudflare run dev:migrate
 pnpm run dev
 ```
 

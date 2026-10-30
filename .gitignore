@@ -60,3 +60,6 @@ sub-store-git-backups-*/
 # Sub-package lockfiles (workspace uses root pnpm-lock.yaml)
 cloudflare/pnpm-lock.yaml
 frontend/pnpm-lock.yaml
+
+# playwright-cli session artifacts
+.playwright-cli/
