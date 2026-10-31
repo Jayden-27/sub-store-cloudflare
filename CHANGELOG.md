@@ -6,6 +6,24 @@ This project follows semantic versioning where practical.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-31
+
+### Changed
+
+- Redesigned the whole interface around a neutral, minimal visual language: tokenised spacing, type, radius and semantic colours; reusable `Field`, `TextInput`, `NumberInput`, `SelectInput`, `CheckRow`, `Card`, `ListRow`, `TriggerRow` and `EmptyState` primitives; and refreshed light, dark and six extended themes.
+- Migrated the subscription list, editor, settings, tools, preview, comparison, icon and tag pickers, and the UI kit page (`/dev/ui`) to the new system.
+- Grouped related controls into cards with consistent 56px rows, inline hints and field-level error text.
+- Moved NutUI styles into a cascade layer so application styles win without `!important`, cutting the design-debt budget and component-level colour literals.
+- Settings now show the project logo for the Cloudflare backend and keep avatars within a fixed size.
+
+### Fixed
+
+- Raised text contrast to WCAG AA: light tertiary text is now `#6B707C`, light danger actions `#C7453F`, and dark tertiary text `#9297A3`.
+- Form labels no longer truncate on narrow screens: inline fields switch to a stacked layout at 520px and below.
+- Identical notifications within five seconds are collapsed, and raw network or timeout errors are translated into actionable messages.
+- Redesigned the batch panel with a segmented type switch, an independent close control and consistent input styling.
+- Swipe actions now use neutral surfaces with semantic icon colours, and swipe is disabled in dual-column mode to avoid gesture conflicts.
+
 ## [1.2.0] - 2026-10-31
 
 ### Added

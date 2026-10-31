@@ -29,7 +29,7 @@ git fetch release --tags
 
 ```bash
 git checkout main
-git branch backup/pre-upgrade-v1.2.0
+git branch backup/pre-upgrade-v1.3.0
 ```
 
 如果副本没有自己的代码修改，可以快进到发布主线：

@@ -1,23 +1,26 @@
-# v1.2.0
+# v1.3.0
 
-Templates you own, and a clearer picture of every subscription.
+A calmer, more consistent interface — same data, same endpoints.
 
 ## Highlights
 
-- Built-in rule templates are seeded into D1 on first upgrade and become normal records: edit, delete, reset to default, or refresh from a remote YAML source.
-- Template updates no longer require a Worker release. Built-in templates sync from the repository `config/templates` directory, and upgrades only seed newly added ones.
-- The settings page shows template sync state (default / synced / modified / failed) and moves secondary actions into a menu.
-- A read-only template source viewer keeps YAML comments for reference.
-- Subscriptions now show the last fetch result: last success time, node count, cache hit, or a readable failure reason.
-- Added link self-test (nodes, size, duration, preview) and QR codes for client setup.
-- Added batch enable, disable, tag, and delete for subscriptions and collections.
-- Added an import tool for upstream Sub-Store backups.
-- Editor previews now show how many nodes each rule action keeps or removes.
-- Download links accept `template` and `filters` overrides.
+- A neutral, minimal visual language now runs through every page: subscription list, editor, settings, tools, preview, comparison, icon and tag pickers.
+- Shared form and layout primitives (`Field`, `TextInput`, `SelectInput`, `Card`, `ListRow`, `EmptyState`, and more) keep spacing, sizing and focus states consistent.
+- Light and dark themes were rebuilt on the new palette, and six extended themes were refreshed to match.
+- Settings, editors and tools group related controls into cards with clearer labels, hints and inline errors.
+- Framework styles now sit in a cascade layer, so application styles override them cleanly instead of piling up `!important` rules.
+
+## Fixes
+
+- Tertiary text and danger actions now meet WCAG AA contrast in light and dark themes.
+- Settings forms switch to a stacked label layout at 520px and below, so labels no longer truncate on phones.
+- Repeated notifications are collapsed, and raw network or timeout errors are replaced with readable guidance.
+- The batch panel uses a segmented control with an independent close button and consistent fields.
+- Swipe actions use neutral surfaces with semantic icons; swipe is disabled in dual-column mode.
 
 ## Upgrade
 
-Keep the existing Worker, D1 database, and Worker Secrets. Pull the repository, apply the new migrations, and deploy:
+This release contains front-end and API version changes only. No database migrations are required.
 
 ```bash
 git pull --ff-only
@@ -25,14 +28,4 @@ pnpm run build
 pnpm run install:cloudflare
 ```
 
-This release adds three additive D1 migrations:
-
-- `0004_seed_templates.sql` seeds the built-in templates as editable records.
-- `0005_source_fetch_status.sql` adds fetch status columns to `sources`.
-- `0006_template_remote_sync.sql` adds remote update columns to `templates`.
-
-No data is rewritten or removed. Existing sources, collections, and custom templates are preserved.
-
-If your deployment should use a template mirror, set `SUB_STORE_TEMPLATE_BASE_URL`; leaving it empty keeps templates fully manual.
-
-Deploy Button repository copies do not receive upstream releases automatically. See `docs/upgrading.md` before merging upstream into a deployed copy.
+Existing sources, collections, templates, settings, and share links are untouched. The `check:design` command is available if you customize the UI and want to keep the design-debt budget from growing.
