@@ -59,7 +59,7 @@ flowchart LR
 ### 1. 生成两个不同的 Token
 
 ```bash
-node --input-type=module -e "import{randomBytes}from'node:crypto';console.log(randomBytes(32).toString('base64url'));console.log(randomBytes(32).toString('base64url'))"
+pnpm run tokens:generate
 ```
 
 分别用于 `SUB_STORE_ADMIN_TOKEN` 和 `SUB_STORE_PUBLIC_DOWNLOAD_TOKEN`，不要复用同一个值。

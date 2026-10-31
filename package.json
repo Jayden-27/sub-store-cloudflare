@@ -87,6 +87,7 @@
     }
   },
   "devDependencies": {
-    "cf": "1.0.0-beta.14"
+    "cf": "1.0.0-beta.14",
+    "yaml": "^2.9.0"
   }
 }

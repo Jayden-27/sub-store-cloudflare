@@ -55,7 +55,7 @@ flowchart LR
 ### 1. Generate two different tokens
 
 ```bash
-node --input-type=module -e "import{randomBytes}from'node:crypto';console.log(randomBytes(32).toString('base64url'));console.log(randomBytes(32).toString('base64url'))"
+pnpm run tokens:generate
 ```
 
 Use them for `SUB_STORE_ADMIN_TOKEN` and `SUB_STORE_PUBLIC_DOWNLOAD_TOKEN`. Never reuse one value for both.

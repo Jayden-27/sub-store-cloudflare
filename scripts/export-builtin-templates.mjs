@@ -1,11 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stringify } from "yaml";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const require = createRequire(join(root, "cloudflare/package.json"));
-const { stringify } = require("yaml");
 const { BUILTIN_TEMPLATES } = await import(new URL("../cloudflare/src/lib/defaults.ts", import.meta.url).href);
 
 const checkOnly = process.argv.includes("--check");

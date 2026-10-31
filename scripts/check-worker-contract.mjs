@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
 const SUPPORTED_TARGETS = ["mihomo", "stash", "surge", "surge-mac", "surfboard", "loon", "egern", "shadowrocket", "qx", "sing-box", "v2ray", "uri", "json"];
-const RETAINED_FRONTEND_ROUTES = new Set(["/", "/subs", "/tools", "/my", "/preview", "/edit/:editType(subs|collections)/:id", "/404", "/:pathMatch(.*)"]);
+// /dev/ui is a component gallery that only exists in development builds.
+const RETAINED_FRONTEND_ROUTES = new Set(["/", "/subs", "/tools", "/my", "/preview", "/edit/:editType(subs|collections)/:id", "/dev/ui", "/404", "/:pathMatch(.*)"]);
 
 const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "cloudflare/src"], { encoding: "utf8" })
   .split("\0")
