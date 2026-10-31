@@ -23,6 +23,7 @@ This project follows semantic versioning where practical.
 - Identical notifications within five seconds are collapsed, and raw network or timeout errors are translated into actionable messages.
 - Redesigned the batch panel with a segmented type switch, an independent close control and consistent input styling.
 - Swipe actions now use neutral surfaces with semantic icon colours, and swipe is disabled in dual-column mode to avoid gesture conflicts.
+- Restored the release checks: the open-source guard no longer flags the icon-collection picker that was re-ported from upstream, and the worker startup smoke test tears down the whole `wrangler dev` process tree so it exits instead of hanging on Windows.
 
 ## [1.2.0] - 2026-10-31
 
