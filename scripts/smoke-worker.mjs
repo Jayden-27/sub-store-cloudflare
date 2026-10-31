@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:net";
 import process from "node:process";
 
@@ -27,12 +27,33 @@ try {
   console.error(output.trim());
   throw error;
 } finally {
-  child.kill("SIGTERM");
+  await terminate(child);
+}
+
+// pnpm -> wrangler -> workerd is a process tree. Killing only the direct child
+// leaves workerd running with our stdio pipes open, which keeps the event loop
+// alive and makes this script hang after the smoke test has already passed.
+async function terminate(processHandle) {
+  if (processHandle.exitCode !== null) return;
+
+  if (process.platform === "win32") {
+    try {
+      execFileSync("taskkill", ["/pid", String(processHandle.pid), "/T", "/F"], { stdio: "ignore" });
+    } catch {
+      processHandle.kill();
+    }
+  } else {
+    processHandle.kill("SIGTERM");
+  }
+
   await Promise.race([
-    new Promise((resolve) => child.once("exit", resolve)),
+    new Promise((resolve) => processHandle.once("exit", resolve)),
     new Promise((resolve) => setTimeout(resolve, 3000)),
   ]);
-  if (child.exitCode === null) child.kill("SIGKILL");
+  if (processHandle.exitCode === null) processHandle.kill("SIGKILL");
+
+  processHandle.stdout?.destroy();
+  processHandle.stderr?.destroy();
 }
 
 async function getAvailablePort() {
