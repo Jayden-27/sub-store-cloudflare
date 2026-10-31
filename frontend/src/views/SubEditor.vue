@@ -113,35 +113,36 @@
           :label="$t(`editorPage.subConfig.basic.tag.label`)"
           prop="tag"
         >
-          <nut-input
+          <TextInput
             class="nut-input-text"
-            v-model.trim="form.tag"
-            :border="false"
+            v-model="form.tag"
+            trim
             :placeholder="$t(`editorPage.subConfig.basic.tag.placeholder`)"
-            type="text"
-            input-align="right"
-            right-icon="rect-right"
-            @click-right-icon="showTagPopup"
+            @suffix-click="showTagPopup"
           >
-          </nut-input>
+            <template #suffix>
+              <nut-icon name="rect-right" size="12px" />
+            </template>
+          </TextInput>
         </nut-form-item>
         <!-- icon -->
         <nut-form-item
           :label="$t(`editorPage.subConfig.basic.icon.label`)"
           prop="icon"
         >
-          <nut-input
-              :border="false"
-              class="nut-input-text"
-              v-model.trim="form.icon"
-              :placeholder="$t(`editorPage.subConfig.basic.icon.placeholder`)"
-              :title="form.icon || ''"
-              type="text"
-              input-align="right"
-              left-icon="shop"
-              @blur="validateIconField"
-              @click-left-icon="showIconPopup"
-            />
+          <TextInput
+            class="nut-input-text"
+            v-model="form.icon"
+            trim
+            :placeholder="$t(`editorPage.subConfig.basic.icon.placeholder`)"
+            :title="form.icon || ''"
+            @blur="validateIconField"
+            @prefix-click="showIconPopup"
+          >
+            <template #prefix>
+              <nut-icon name="shop" size="14px" />
+            </template>
+          </TextInput>
           <span v-if="iconFieldError || iconLoadFailed" class="field-error" role="alert">
             {{ iconFieldError || $t("editorPage.subConfig.basic.icon.loadFailed") }}
           </span>
@@ -285,35 +286,37 @@
             prop="ua"
             v-if="form.source === 'remote'"
           >
-            <nut-input
-              :border="false"
+            <TextInput
               class="nut-input-text"
-              v-model.trim="form.ua"
+              v-model="form.ua"
+              trim
               :placeholder="userAgentPlaceholder"
-              type="text"
-              input-align="right"
-              left-icon="tips"
               :readonly="passThroughUAOn"
-              @click-left-icon="uaTips"
-            />
+              @prefix-click="uaTips"
+            >
+              <template #prefix>
+                <nut-icon name="tips" size="14px" />
+              </template>
+            </TextInput>
           </nut-form-item>
 
           <nut-form-item
             :label="$t(`editorPage.subConfig.basic.subUserinfo.label`)"
             prop="subUserinfo"
           >
-            <nut-input
-              :border="false"
+            <TextInput
               class="nut-input-text"
-              v-model.trim="form.subUserinfo"
+              v-model="form.subUserinfo"
+              trim
               :placeholder="
                 $t(`editorPage.subConfig.basic.subUserinfo.placeholder`)
               "
-              type="text"
-              input-align="right"
-              left-icon="tips"
-              @click-left-icon="subUserinfoTips"
-            />
+              @prefix-click="subUserinfoTips"
+            >
+              <template #prefix>
+                <nut-icon name="tips" size="14px" />
+              </template>
+            </TextInput>
           </nut-form-item>
 
         </template>
@@ -325,17 +328,11 @@
             </view>
             <view class="nut-cell__value nut-form-item__body">
               <view class="nut-form-item__body__slots">
-                <nut-input
-                  :model-value="selectedTemplateLabel"
-                  :border="false"
-                  class="nut-input-text template-trigger-input"
-                  readonly
-                  input-align="right"
-                  left-icon="tips"
-                  right-icon="rect-right"
-                  @click-left-icon.stop="templateTips"
-                  @click-right-icon.stop="openTemplatePicker"
-                />
+                <TriggerRow :value="selectedTemplateLabel" @prefix-click="templateTips">
+                  <template #prefix>
+                    <nut-icon name="tips" size="14px" />
+                  </template>
+                </TriggerRow>
               </view>
             </view>
           </nut-cell>
@@ -345,13 +342,9 @@
             </view>
             <view class="nut-cell__value nut-form-item__body">
               <view class="nut-form-item__body__slots">
-                <nut-input
-                  :model-value="selectedSubsDisplay"
-                  :border="false"
-                  class="nut-input-text include-subs-trigger-input"
-                  readonly
-                  input-align="right"
-                  :right-icon="manualSubscriptionsIsFold ? 'rect-right' : 'rect-down'"
+                <TriggerRow
+                  :value="selectedSubsDisplay"
+                  :chevron="manualSubscriptionsIsFold ? 'right' : 'down'"
                 />
               </view>
             </view>
@@ -424,18 +417,19 @@
               :label="$t(`editorPage.subConfig.basic.subUserinfo.label`)"
               prop="subUserinfo"
             >
-              <nut-input
-                :border="false"
+              <TextInput
                 class="nut-input-text"
-                v-model.trim="form.subUserinfo"
+                v-model="form.subUserinfo"
+                trim
                 :placeholder="
                   $t(`editorPage.subConfig.basic.subUserinfo.placeholder`)
                 "
-                type="text"
-                input-align="right"
-                left-icon="tips"
-                @click-left-icon="subUserinfoTips"
-              />
+                @prefix-click="subUserinfoTips"
+              >
+                <template #prefix>
+                  <nut-icon name="tips" size="14px" />
+                </template>
+              </TextInput>
             </nut-form-item>
         </template>
 
@@ -445,16 +439,7 @@
           class="failure-mode-trigger"
           prop="ignoreFailedRemoteSub"
         >
-          <nut-input
-            :model-value="subFailureModeLabel"
-            :border="false"
-            class="nut-input-text failure-mode-input"
-            readonly
-            input-align="right"
-            right-icon="rect-right"
-            @click="openSubFailureModePicker"
-            @click-right-icon="openSubFailureModePicker"
-          />
+          <TriggerRow :value="subFailureModeLabel" @click="openSubFailureModePicker" />
         </nut-form-item>
         </div>
       </nut-form>
@@ -568,10 +553,12 @@ import {
   setEditorActiveTab,
 } from "@/utils/editorTabState";
 import { getEditorTabForValidationErrors } from "@/utils/editorTabValidation";
+import { friendlyError } from "@/utils/friendlyError";
 import { initStores } from "@/utils/initApp";
 import draggable from "vuedraggable";
 import CompareTable from "@/views/CompareTable.vue";
 import ActionBlock from "@/views/editor/ActionBlock.vue";
+import { TextInput, TriggerRow } from "@/ui";
 import ScriptAction from "@/views/editor/components/ScriptAction.vue";
 import CommonBlock from "@/views/editor/CommonBlock.vue";
 import ActionRadio from "@/views/editor/components/ActionRadio.vue";
@@ -587,6 +574,7 @@ import { Dialog, Toast } from "@nutui/nutui";
 import { storeToRefs } from "pinia";
 import {
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   provide,
@@ -1184,7 +1172,7 @@ const validateLocalContent = async (content = localContentText.value, options?: 
     }
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = friendlyError(error);
     localPreviewSummary.value = {
       status: "danger",
       title: t("editorPage.subConfig.basic.content.validation.failed"),
@@ -1436,7 +1424,7 @@ const submit = async () => {
     showNotify({
       type: "danger",
       title: t("editorPage.subConfig.pop.saveFailed"),
-      content: error instanceof Error ? error.message : String(error),
+      content: friendlyError(error),
     });
   } finally {
     isget.value = false;
@@ -1854,6 +1842,12 @@ const onBeforeUnload = (event: BeforeUnloadEvent) => {
 
 onMounted(() => {
   window.addEventListener("beforeunload", onBeforeUnload);
+  // 子组件挂载后可能补齐动作默认值，重新采集一次初始快照，避免刚打开就提示未保存
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      if (isInit.value) captureEditorState();
+    });
+  });
 });
 onBeforeUnmount(() => {
   window.removeEventListener("beforeunload", onBeforeUnload);
@@ -1864,6 +1858,24 @@ onBeforeUnmount(() => {
 .page-wrapper {
   padding: 0 var(--safe-area-side) calc(v-bind("padding") + 63px)
     var(--safe-area-side);
+
+  .form {
+    background: var(--ui-surface-card);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-lg);
+    overflow: hidden;
+  }
+
+  :deep(.nut-form-item) {
+    min-height: 56px;
+    padding: var(--ui-space-2) var(--ui-space-5);
+    border-bottom: 1px solid var(--ui-border-subtle);
+  }
+
+  :deep(.nut-form-item__label) {
+    font-size: var(--ui-font-sm);
+    color: var(--ui-text-secondary);
+  }
 
   .field-error {
     display: block;
@@ -2042,7 +2054,9 @@ onBeforeUnmount(() => {
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 8px var(--safe-area-side) calc(v-bind("padding") + 8px)
+  background: var(--ui-surface-card);
+  border-top: 1px solid var(--ui-border);
+  padding: 10px var(--safe-area-side) calc(v-bind("padding") + 10px)
     var(--safe-area-side);
   z-index: 20;
   background: var(--background-color);

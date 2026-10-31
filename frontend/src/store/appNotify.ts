@@ -1,6 +1,10 @@
 import { defineStore } from "pinia";
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
+import { friendlyError } from "@/utils/friendlyError";
+
+const DEDUP_WINDOW = 5000;
+let lastNotify = { key: "", at: 0 };
 
 const formatNotifyText = (value: unknown) => {
   if (typeof value === "string") {
@@ -41,7 +45,14 @@ export const useAppNotifyStore = defineStore("appNotify", {
       const notifyType = type || "primary";
       const fallbackTitle = notifyType === "danger" ? "操作失败" : "通知";
       const safeTitle = formatNotifyText(title) || fallbackTitle;
-      const safeContent = formatNotifyText(content);
+      const rawContent = formatNotifyText(content);
+      const safeContent = rawContent ? friendlyError(rawContent) : undefined;
+
+      const key = `${notifyType}|${safeTitle}|${safeContent ?? ""}`;
+      const now = Date.now();
+      if (lastNotify.key === key && now - lastNotify.at < DEDUP_WINDOW) return;
+      lastNotify = { key, at: now };
+
       let html = `<strong>${formatNotifyHtml(safeTitle)}</strong>`;
       if (safeContent) {
         html += `<br/>${formatNotifyHtml(safeContent)}`;

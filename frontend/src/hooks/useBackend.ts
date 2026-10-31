@@ -5,6 +5,7 @@ import loon from '@/assets/icons/loon.png';
 import stash from '@/assets/icons/stash.png';
 import egern from '@/assets/icons/egern.png';
 import node from '@/assets/icons/node.svg?url';
+import appLogo from '@/assets/icons/app-logo.png';
 
 import { useGlobalStore } from '@/store/global';
 import { storeToRefs } from 'pinia';
@@ -30,8 +31,9 @@ export const useBackend = () => {
       case 'Stash':
         return stash;
       case 'Node':
-      case 'Cloudflare':
         return node;
+      case 'Cloudflare':
+        return appLogo;
       default:
         return '';
     }

@@ -57,16 +57,39 @@
       v-model:visible="batchVisible"
       position="bottom"
       round
-      closeable
-      :style="{ height: '72vh', padding: '16px 12px calc(16px + env(safe-area-inset-bottom))' }"
+      :style="{ height: '72vh', padding: '16px 16px calc(16px + env(safe-area-inset-bottom))' }"
       z-index="11000"
     >
       <div class="batch-panel">
-        <div class="batch-tabs">
-          <button :class="{ current: batchType === 'sub' }" @click="switchBatchType('sub')">
+        <header class="batch-head">
+          <h3 class="batch-title">{{ $t('subPage.batch.title') }}</h3>
+          <button
+            type="button"
+            class="batch-close"
+            :aria-label="$t('subPage.batch.close')"
+            :title="$t('subPage.batch.close')"
+            @click="batchVisible = false"
+          >
+            <font-awesome-icon icon="fa-solid fa-xmark" />
+          </button>
+        </header>
+        <div class="batch-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="batchType === 'sub'"
+            :class="{ current: batchType === 'sub' }"
+            @click="switchBatchType('sub')"
+          >
             {{ $t('subPage.batch.sources') }}
           </button>
-          <button :class="{ current: batchType === 'collection' }" @click="switchBatchType('collection')">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="batchType === 'collection'"
+            :class="{ current: batchType === 'collection' }"
+            @click="switchBatchType('collection')"
+          >
             {{ $t('subPage.batch.collections') }}
           </button>
         </div>
@@ -986,6 +1009,8 @@ const importTips = () => {
 }
 
 .list-title {
+  color: var(--ui-text-secondary);
+  font-size: 14px;
   -webkit-user-select: none;
   user-select: none;
   display: flex;
@@ -1038,9 +1063,9 @@ const importTips = () => {
 }
 
 .draggable-item {
-  margin-top: 12px;
-  margin-bottom: 12px;
-  border-radius: var(--item-card-radios);
+  margin-top: 10px;
+  margin-bottom: 10px;
+  border-radius: var(--ui-radius-lg);
   overflow: hidden;
 }
 
@@ -1116,23 +1141,80 @@ const importTips = () => {
 .batch-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--ui-space-3);
   height: 100%;
+}
+
+.batch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.batch-title {
+  margin: 0;
+  color: var(--ui-text-primary);
+  font-size: var(--ui-font-md);
+  font-weight: 600;
+}
+
+.batch-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--ui-text-tertiary);
+  font-size: var(--ui-font-md);
+  cursor: pointer;
+  transition: background var(--ui-duration-fast) ease, color var(--ui-duration-fast) ease;
+
+  &:hover {
+    background: var(--ui-surface-page);
+    color: var(--ui-text-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 1px;
+  }
 }
 
 .batch-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--ui-space-1);
+  padding: 3px;
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface-page);
+
   button {
     flex: 1;
-    padding: 8px 0;
-    border-radius: 8px;
-    border: 1px solid var(--border-color, #ddd);
+    height: 34px;
+    border: 0;
+    border-radius: var(--ui-radius-md);
     background: transparent;
-    color: var(--second-text-color);
+    color: var(--ui-text-secondary);
+    font-size: var(--ui-font-sm);
+    cursor: pointer;
+    transition: background var(--ui-duration-fast) ease, color var(--ui-duration-fast) ease;
+
+    &:hover {
+      color: var(--ui-text-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ui-accent);
+      outline-offset: 1px;
+    }
+
     &.current {
-      border-color: var(--primary-color);
-      color: var(--primary-color);
+      background: var(--ui-accent);
+      color: #fff;
+      font-weight: 600;
     }
   }
 }
@@ -1140,11 +1222,13 @@ const importTips = () => {
 .batch-all {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--ui-space-2);
+  font-size: var(--ui-font-sm);
+  color: var(--ui-text-primary);
+
   small {
     margin-left: auto;
-    color: var(--comment-text-color);
+    color: var(--ui-text-tertiary);
   }
 }
 
@@ -1154,44 +1238,69 @@ const importTips = () => {
   margin: 0;
   padding: 0;
   list-style: none;
+
   li {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 4px;
-    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    gap: var(--ui-space-2);
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--ui-border-subtle);
   }
+
   .batch-name {
     flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
   .batch-state {
-    color: var(--comment-text-color);
+    color: var(--ui-text-tertiary);
+    font-size: var(--ui-font-xs);
   }
+
   .batch-empty {
     justify-content: center;
-    color: var(--comment-text-color);
+    color: var(--ui-text-tertiary);
   }
 }
 
 .batch-tag-row {
   display: flex;
-  gap: 8px;
+  gap: var(--ui-space-2);
+
   input {
     flex: 1;
-    padding: 6px 10px;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--primary-text-color);
+    min-width: 0;
+    min-height: var(--ui-field-height);
+    padding: 0 var(--ui-space-3);
+    border: 1px solid var(--ui-border-field);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface-field);
+    color: var(--ui-text-primary);
+    font-size: var(--ui-font-base);
+    outline: none;
+
+    &:focus {
+      border-color: var(--ui-accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 20%, transparent);
+    }
+
+    &::placeholder {
+      color: var(--ui-text-tertiary);
+    }
   }
 }
 
 .batch-actions {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: var(--ui-space-2);
+
+  :deep(.nut-button) {
+    flex: 1 1 0;
+    border-radius: var(--ui-radius-md);
+  }
 }
 </style>

@@ -50,29 +50,28 @@
           <div class="icon-collection-search-content">
             <nut-form>
               <nut-form-item>
-                <nut-input
+                <TextInput
                   v-model="form.iconName"
-                  :border="false"
-                  text-align="left"
-                  :placeholder="$t(`iconCollectionPage.iconNamePlaceholder`)"
-                  type="text"
                   clearable
+                  align="left"
+                  :placeholder="$t(`iconCollectionPage.iconNamePlaceholder`)"
                   @clear="clearIconName"
-                ></nut-input>
+                />
               </nut-form-item>
               <nut-form-item v-if="showCustomIconCollection">
-                <nut-input
+                <TextInput
                   v-model="form.customIconCollectionUrl"
                   class="custom-icon-collection-url"
-                  :border="false"
-                  text-align="left"
-                  :placeholder="$t(`iconCollectionPage.iconCollectionPlaceholder`)"
-                  type="text"
                   clearable
-                  right-icon="refresh"
+                  align="left"
+                  :placeholder="$t(`iconCollectionPage.iconCollectionPlaceholder`)"
                   @clear="clearCustomIconCollectionUrl"
-                  @click-right-icon="handleAddCustomIconCollection"
-                ></nut-input>
+                  @suffix-click="handleAddCustomIconCollection"
+                >
+                  <template #suffix>
+                    <nut-icon name="refresh" size="14px" />
+                  </template>
+                </TextInput>
               </nut-form-item>
             </nut-form>
           </div>
@@ -157,6 +156,7 @@
 
 <script setup lang="ts">
 import DesktopPicker from "@/components/DesktopPicker.vue";
+import { TextInput } from '@/ui';
 import { Toast } from "@nutui/nutui";
 import { useDebounceFn, useVirtualList } from "@vueuse/core";
 import axios from "axios";

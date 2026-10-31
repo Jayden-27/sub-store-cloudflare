@@ -91,10 +91,10 @@ const { navBarHeight } = storeToRefs(systemStore);
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 101;
     
-    background: var(--tab-bar-color);
-    border: 1px solid var(--divider-color);
-    border-radius: var(--item-card-radios, 20px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    background: var(--ui-surface-raised);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-xl);
+    box-shadow: var(--ui-shadow-1);
     backdrop-filter: blur(var(--tab-bar-blur, 20px));
     -webkit-backdrop-filter: blur(var(--tab-bar-blur, 20px));
 
@@ -118,6 +118,11 @@ const { navBarHeight } = storeToRefs(systemStore);
 
   &.is-expanded {
     width: 160px;
+
+    .menu-item {
+      justify-content: flex-start;
+      padding: 12px 16px;
+    }
   }
 
   .sidebar-content {
@@ -139,14 +144,17 @@ const { navBarHeight } = storeToRefs(systemStore);
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    color: var(--lowest-text-color);
-    width: 100%;
-    padding: 14px 24px;
+    justify-content: center;
+    margin: 0 6px;
+    color: var(--ui-text-tertiary);
+    width: calc(100% - 12px);
+    padding: 12px 0;
+    border-radius: var(--ui-radius-md);
     transition: color 0.2s, background 0.2s;
 
     &.active {
-      color: var(--primary-color);
+      color: var(--ui-accent);
+      background: color-mix(in srgb, var(--ui-accent) 10%, transparent);
     }
 
     &:hover:not(.active) {

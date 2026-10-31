@@ -54,31 +54,20 @@
                 <nut-icon v-if="collapsedElements.includes(element.id)" name="rect-right" size="12px"></nut-icon>
               </span>
               <div class="input-wrapper">
-                <nut-input
+                <TextInput
                   :id="`action-input-${element.id}`"
                   @click.stop
                   v-model="findEditItemById(element).customName"
                   class="custom-name-input"
+                  size="sm"
+                  variant="plain"
                   type="text"
                   :readonly="!findEditItemById(element).isEditing"
                   :placeholder="findEditItemById(element).defaultName"
                   @blur="saveEditName(element)"
                   @keyup.enter="saveEditName(element)"
                   @click="toggleInput(element)"
-                >
-                  <!-- <template #button>
-                    <div class="list-group-item-icons">
-                      <template v-if="!findEditItemById(element).isEditing">
-                        <font-awesome-icon icon="fa-solid fa-pen-to-square" @click.stop="toggleEditName(element)" />
-                      </template>
-                      <template v-else>
-                        <font-awesome-icon icon="fa-solid fa-floppy-disk" @click.stop="saveEditName(element)" />
-                        <font-awesome-icon icon="fa-solid fa-ban" @click.stop="exitEditName(element)" />
-                      </template>
-                      <font-awesome-icon icon="fa-solid fa-circle-question" @click.stop="pop(element.type, element.tipsDes)" />
-                    </div>
-                  </template> -->
-                </nut-input>
+                />
                 <!-- <div
                   v-if="!findEditItemById(element).isEditing"
                   class="input-overlay"
@@ -244,6 +233,7 @@
 </template>
 
 <script lang="ts" setup>
+import { TextInput } from '@/ui';
 import i18nFile from '@/locales/zh';
 import { Dialog, Toast } from '@nutui/nutui';
 import { ref, inject, reactive, watch, nextTick, computed, onMounted } from 'vue';
@@ -647,6 +637,11 @@ defineExpose({ exitAllEditName });
 .list-group-item {
   display: flex;
   flex-direction: column;
+  background: var(--ui-surface-card);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  margin-bottom: var(--ui-space-3);
+  padding: var(--ui-space-3) var(--ui-space-4);
   box-shadow: none;
 
   .list-group-item-title {
@@ -665,27 +660,13 @@ defineExpose({ exitAllEditName });
       flex: 1;
       margin-right: 2px;
       .custom-name-input {
-        font-size: 12px;
-        font-weight: bold;
-        background: transparent;
-        color: var(--second-text-color);
-        padding: 0;
-        border: none;
-        outline: none;
+        width: 100%;
         text-overflow: ellipsis;
-        :deep(.nut-input) {
-          width: 100%;
+        :deep(input) {
+          font-size: 12px;
+          font-weight: bold;
           color: var(--second-text-color);
           text-overflow: ellipsis;
-
-        }
-        &.nut-input-readonly,
-        &.nut-input-disabled {
-          :deep(.input-text) {
-            cursor: pointer;
-            color: var(--second-text-color);
-            text-overflow: ellipsis;
-          }
         }
       }
 
@@ -937,11 +918,11 @@ defineExpose({ exitAllEditName });
 }
 
 .custom-button {
-  background-color: var(--divider-color);
-  color: var(--second-text-color);
+  background: var(--ui-surface-page);
+  color: var(--ui-text-secondary);
   padding: 9px 15px;
-  border-radius: 18px;
-  border: none;
+  border-radius: var(--ui-radius-md);
+  border: 1px solid var(--ui-border);
   font-weight: normal;
   cursor: pointer;
   display: flex;

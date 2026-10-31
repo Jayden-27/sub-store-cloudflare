@@ -3,6 +3,9 @@ body {
   outline: none;
   -webkit-tap-highlight-color: transparent;
   min-height: 100% !important;
+  font-family: var(--ui-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {

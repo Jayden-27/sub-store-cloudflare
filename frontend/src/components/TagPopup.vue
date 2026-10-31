@@ -16,13 +16,12 @@
     <div class="popup-title">{{ t('subPage.tag.addTagTitle') }}</div>
     <div class="popup-header">
       <div class="tag-input">
-        <nut-input
-          class="nut-input-text"
-          v-model.trim="keyword"
-          :placeholder="t('subPage.tag.tagPlaceholder')"
-          type="text"
-          input-align="left"
+        <TextInput
+          v-model="keyword"
+          trim
           clearable
+          align="left"
+          :placeholder="t('subPage.tag.tagPlaceholder')"
           @clear="clearSearch"
         />
       </div>
@@ -51,18 +50,17 @@
         </draggable>
         <!-- 新建标签 -->
         <div class="add-tag-box">
-        <nut-input
+        <TextInput
           v-if="isAddTag"
           class="add-tag-input"
-          v-model.trim="addTagValue"
+          v-model="addTagValue"
+          trim
+          autofocus
+          align="left"
+          size="sm"
+          :maxlength="30"
           :placeholder="t('subPage.tag.tagPlaceholder')"
-          :autofocus="true"
-          max-length="30"
-          type="text"
-          input-align="left"
-          :border="false"
           @blur="saveTag"
-          closeable
         />
         <nut-tag v-else class="add-tag" @click="addTag">{{ t('subPage.tag.addTagBtn') }}</nut-tag>
         </div>
@@ -77,6 +75,7 @@ import { storeToRefs } from "pinia";
 import { useSubsStore } from "@/store/subs";
 import draggable from "vuedraggable";
 
+import { TextInput } from '@/ui';
 import { useI18n } from "vue-i18n";
 import { useWideScreenNarrowMode } from "@/hooks/useWideScreenNarrowMode";
 

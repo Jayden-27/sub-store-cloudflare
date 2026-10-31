@@ -22,7 +22,7 @@
             :autosize="{ minHeight: 48, maxHeight: 120 }"
             @update:model-value="value => setArgument(parameter, value)"
           />
-          <nut-input
+          <TextInput
             v-else
             :model-value="String(argumentsValue[parameter.key] ?? '')"
             :type="parameter.type === 'number' ? 'number' : 'text'"
@@ -37,6 +37,7 @@
 </template>
 
 <script lang="ts" setup>
+import { TextInput } from '@/ui';
 import { computed, inject, onMounted, ref } from 'vue';
 import { useCloudflareApi } from '@/api/app';
 import { useI18n } from 'vue-i18n';

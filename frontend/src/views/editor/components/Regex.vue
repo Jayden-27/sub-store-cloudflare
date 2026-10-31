@@ -55,17 +55,15 @@
       </draggable>
     </div>
     <div class="input-wrapper">
-      <nut-input
-       class="custom-input"
-        label=""
+      <TextInput
+        class="custom-input"
         :placeholder="
           $t(`editorPage.subConfig.nodeActions['${type}'].placeholder[0]`)
         "
         v-model="input1"
       />
-      <nut-input
+      <TextInput
         v-if="type === 'Regex Rename Operator'"
-        label=""
         :placeholder="
           $t(`editorPage.subConfig.nodeActions['${type}'].placeholder[1]`)
         "
@@ -77,6 +75,7 @@
 </template>
 
 <script lang="ts" setup>
+  import { TextInput } from '@/ui';
   import { Dialog } from '@nutui/nutui';
   import { inject, onMounted, ref, watch, computed } from 'vue';
   import { useI18n } from 'vue-i18n';

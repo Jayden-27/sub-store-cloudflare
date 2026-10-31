@@ -25,6 +25,8 @@ export default {
       failedStatusOnly: "请求失败: {status}",
       failed: "请求失败",
       network: "网络错误或后端异常，无法连接后端服务\n",
+      networkRetry: "网络连接失败，请检查网络或代理后重试",
+      timeout: "请求超时，请稍后重试",
       noResponse: "请求没有收到响应"
     }
   },
@@ -130,6 +132,8 @@ export default {
   },
   subPage: {
     batch: {
+      title: "批量操作",
+      close: "关闭",
       sources: "订阅源",
       collections: "组合订阅",
       selectAll: "全选",

@@ -130,6 +130,14 @@ const router = createRouter({
         },
       ],
     },
+    ...(import.meta.env.DEV
+      ? [
+          {
+            path: '/dev/ui',
+            component: () => import('@/views/UiKit.vue'),
+          },
+        ]
+      : []),
     {
       path: '/404',
       component: () => import('@/views/NotFound.vue'),

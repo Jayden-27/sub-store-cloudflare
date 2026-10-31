@@ -3,7 +3,7 @@
     ref="swipe"
     class="sub-item-swipe"
     :class="{ 'is-dual-column': props.isDualColumn }"
-    :disabled="props.disabled"
+    :disabled="props.disabled || props.isDualColumn"
     @close="setIsMoveClose()"
     @open="setIsMoveOpen()"
   >
@@ -275,86 +275,74 @@
     <template v-if="appearanceSetting.isLeftRight" #left>
       <!-- Copy -->
       <div class="sub-item-swipe-btn-wrapper">
-        <nut-button
-          shape="square"
-          type="primary"
-          class="sub-item-swipe-btn"
+        <button
+          type="button"
+          class="sub-item-swipe-btn is-copy"
           :aria-label="t('subPage.actions.cloneConfig')"
           :title="t('subPage.actions.cloneConfig')"
           @click="onClickCopyConfig"
         >
           <font-awesome-icon icon="fa-solid fa-paste" />
-        </nut-button>
+        </button>
       </div>
       <div class="sub-item-swipe-btn-wrapper">
-        <nut-button
-          shape="square"
-          type="success"
-          class="sub-item-swipe-btn"
+        <button
+          type="button"
+          class="sub-item-swipe-btn is-export"
           :aria-label="t('subPage.actions.openDownload')"
           :title="t('subPage.actions.openDownload')"
           @click.stop="onClickOpenDownload"
         >
           <font-awesome-icon icon="fa-solid fa-file-export" />
-        </nut-button>
+        </button>
       </div>
-      <!-- preview -->
-      <!-- <div class="sub-item-swipe-btn-wrapper">
-        <nut-button shape="square" type="success" class="sub-item-swipe-btn" @click="onClickPreview">
-          <font-awesome-icon icon="fa-solid fa-eye" />
-        </nut-button>
-      </div> -->
       <!-- del -->
       <div class="sub-item-swipe-btn-wrapper">
-        <nut-button
-          shape="square"
-          type="danger"
-          class="sub-item-swipe-btn"
+        <button
+          type="button"
+          class="sub-item-swipe-btn is-delete"
           :aria-label="t('subPage.actions.delete')"
           :title="t('subPage.actions.delete')"
           @click="onClickDelete"
         >
           <font-awesome-icon icon="fa-solid fa-trash-can" />
-        </nut-button>
+        </button>
       </div>
     </template>
 
     <template v-else #right>
       <div class="sub-item-swipe-btn-wrapper">
-        <nut-button
-          shape="square"
-          type="primary"
-          class="sub-item-swipe-btn"
+        <button
+          type="button"
+          class="sub-item-swipe-btn is-copy"
           :aria-label="t('subPage.actions.cloneConfig')"
           :title="t('subPage.actions.cloneConfig')"
           @click.stop="onClickCopyConfig"
         >
           <font-awesome-icon icon="fa-solid fa-paste" />
-        </nut-button>
+        </button>
       </div>
       <div class="sub-item-swipe-btn-wrapper">
-        <nut-button
-          shape="square"
-          type="success"
-          class="sub-item-swipe-btn"
+        <button
+          type="button"
+          class="sub-item-swipe-btn is-export"
           :aria-label="t('subPage.actions.openDownload')"
           :title="t('subPage.actions.openDownload')"
           @click.stop="onClickOpenDownload"
         >
           <font-awesome-icon icon="fa-solid fa-file-export" />
-        </nut-button>
+        </button>
       </div>
       <div class="sub-item-swipe-btn-wrapper">
-        <nut-button
-          shape="square"
-          type="danger"
-          class="sub-item-swipe-btn"
+        <button
+          type="button"
+          class="sub-item-swipe-btn is-delete"
           :aria-label="t('subPage.actions.delete')"
           :title="t('subPage.actions.delete')"
           @click.stop="onClickDelete"
         >
           <font-awesome-icon icon="fa-solid fa-trash-can" />
-        </nut-button>
+        </button>
       </div>
     </template>
   </nut-swipe>
@@ -1155,19 +1143,20 @@ const refreshSubFlowsIfNeeded = async () => {
   line-height: 1.4;
   margin-left: auto;
   margin-right: auto;
-  border-radius: var(--item-card-radios);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
   display: flex;
   min-width: 0;
-  background: var(--card-color);
+  background: var(--ui-surface-card);
   cursor: pointer;
   position: relative;
   overflow: hidden;
   :deep(.nut-avatar) {
     flex-shrink: 0;
-    width: 56px;
-    height: 56px;
-    margin-right: 15px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    margin-right: 14px;
+    border-radius: 10px;
 
     img {
       object-fit: contain;
@@ -1197,7 +1186,8 @@ const refreshSubFlowsIfNeeded = async () => {
         gap: 3px;
         white-space: nowrap;
         overflow: hidden;
-        font-size: 16px;
+        font-size: 15px;
+        font-weight: 600;
         color: var(--primary-text-color);
         vertical-align: middle;
       }
@@ -1263,6 +1253,7 @@ const refreshSubFlowsIfNeeded = async () => {
     }
 
     .sub-item-detail {
+      font-size: 13px;
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 3;
@@ -1368,30 +1359,51 @@ const refreshSubFlowsIfNeeded = async () => {
 .sub-item-swipe {
   -webkit-user-select: none;
   user-select: none;
-  :deep(.nut-swipe__left) {
-    .sub-item-swipe-btn-wrapper {
-      padding-left: 24px;
-    }
-  }
 
   :deep(.nut-swipe__right),
   :deep(.nut-swipe__left) {
     display: flex;
-    justify-content: space-around;
     align-items: center;
+    justify-content: space-around;
+    gap: var(--ui-space-2);
+    padding: 0 var(--ui-space-2);
     z-index: 10;
 
     .sub-item-swipe-btn-wrapper {
-      padding-left: 14px;
+      padding: 0;
+    }
 
-      &:last-child {
-        padding-right: 14px;
+    .sub-item-swipe-btn {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius-md);
+      background: var(--ui-surface-page);
+      color: var(--ui-text-secondary);
+      font-size: 16px;
+      box-shadow: var(--ui-shadow-1);
+      cursor: pointer;
+      transition: background var(--ui-duration-fast) ease, border-color var(--ui-duration-fast) ease;
+
+      &.is-copy,
+      &.is-export {
+        color: var(--ui-accent);
       }
 
-      .sub-item-swipe-btn {
-        border-radius: 50%;
-        height: 46px;
-        width: 44px;
+      &.is-delete {
+        color: var(--ui-danger);
+      }
+
+      &:active {
+        background: var(--ui-surface-page);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--ui-accent);
+        outline-offset: 1px;
       }
     }
   }

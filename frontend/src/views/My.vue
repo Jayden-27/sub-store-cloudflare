@@ -64,6 +64,10 @@
         class="template-sync-summary"
         :class="{ 'is-error': templateSyncSummary.failed > 0 }"
       >
+        <font-awesome-icon
+          v-if="templateSyncSummary.failed > 0"
+          icon="fa-solid fa-circle-exclamation"
+        />
         {{ templateSyncSummary.text }}
       </p>
       <div class="template-list">
@@ -76,10 +80,10 @@
             </span>
           </div>
           <div class="template-actions">
-            <nut-button v-if="template.remoteUrl" plain type="success" size="mini" @click="syncTemplate(template)">
+            <nut-button v-if="template.remoteUrl" plain type="primary" size="mini" @click="syncTemplate(template)">
               {{ t("myPage.templates.sync") }}
             </nut-button>
-            <nut-button plain type="primary" size="mini" @click="openTemplateEdit(template)">
+            <nut-button plain type="default" size="mini" @click="openTemplateEdit(template)">
               {{ t("myPage.btn.edit") }}
             </nut-button>
             <nut-button plain type="default" size="mini" @click="openTemplateActions(template)">
@@ -108,43 +112,28 @@
         </div>
       </div>
       <div v-if="requestEditing" class="config-input-wrapper">
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.defaultUserAgent') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.defaultUserAgent" type="text" input-align="right" />
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.defaultFlowUserAgent') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.defaultFlowUserAgent" type="text" input-align="right" />
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.defaultTimeout') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.defaultTimeout" type="number" input-align="right" />
-        </div>
-        <p v-if="requestFieldErrors.defaultTimeout" class="setting-error" role="alert">{{ requestFieldErrors.defaultTimeout }}</p>
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.backendRequestConcurrency') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.backendRequestConcurrency" type="number" input-align="right" />
-        </div>
-        <p v-if="requestFieldErrors.backendRequestConcurrency" class="setting-error" role="alert">{{ requestFieldErrors.backendRequestConcurrency }}</p>
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.backendRequestConcurrencyWaitTime') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.backendRequestConcurrencyWaitTime" type="number" input-align="right" />
-        </div>
-        <p v-if="requestFieldErrors.backendRequestConcurrencyWaitTime" class="setting-error" role="alert">{{ requestFieldErrors.backendRequestConcurrencyWaitTime }}</p>
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.remoteCacheTtl') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.remoteCacheTtl" type="number" input-align="right" />
-        </div>
-        <p v-if="requestFieldErrors.remoteCacheTtl" class="setting-error" role="alert">{{ requestFieldErrors.remoteCacheTtl }}</p>
-        <div class="setting-row">
-          <span class="setting-label">{{ t('myPage.request.nodeInfoApiUrl') }}</span>
-          <nut-input class="setting-input" v-model="requestForm.nodeInfoApiUrl" type="text" input-align="right" />
-        </div>
-        <p v-if="requestFieldErrors.nodeInfoApiUrl" class="setting-error" role="alert">{{ requestFieldErrors.nodeInfoApiUrl }}</p>
-        <label class="boolean-setting">
-          <input v-model="requestForm.remoteCacheStaleOnError" type="checkbox" />
-          {{ t('myPage.request.remoteCacheStaleOnError') }}
-        </label>
+        <Field :label="t('myPage.request.defaultUserAgent')">
+          <TextInput v-model="requestForm.defaultUserAgent" />
+        </Field>
+        <Field :label="t('myPage.request.defaultFlowUserAgent')">
+          <TextInput v-model="requestForm.defaultFlowUserAgent" />
+        </Field>
+        <Field :label="t('myPage.request.defaultTimeout')" :error="requestFieldErrors.defaultTimeout">
+          <NumberInput v-model="requestForm.defaultTimeout" />
+        </Field>
+        <Field :label="t('myPage.request.backendRequestConcurrency')" :error="requestFieldErrors.backendRequestConcurrency">
+          <NumberInput v-model="requestForm.backendRequestConcurrency" />
+        </Field>
+        <Field :label="t('myPage.request.backendRequestConcurrencyWaitTime')" :error="requestFieldErrors.backendRequestConcurrencyWaitTime">
+          <NumberInput v-model="requestForm.backendRequestConcurrencyWaitTime" />
+        </Field>
+        <Field :label="t('myPage.request.remoteCacheTtl')" :error="requestFieldErrors.remoteCacheTtl">
+          <NumberInput v-model="requestForm.remoteCacheTtl" />
+        </Field>
+        <Field :label="t('myPage.request.nodeInfoApiUrl')" :error="requestFieldErrors.nodeInfoApiUrl">
+          <TextInput v-model="requestForm.nodeInfoApiUrl" type="url" inputmode="url" mono />
+        </Field>
+        <CheckRow v-model="requestForm.remoteCacheStaleOnError" :label="t('myPage.request.remoteCacheStaleOnError')" />
       </div>
       <p v-else class="card-desc">{{ requestSummary }}</p>
     </section>
@@ -168,32 +157,17 @@
       >
         <h2>{{ templateDialogTitle }}</h2>
         <div class="template-form">
-          <div class="template-form__row">
-            <span class="template-form__label">{{ t("myPage.templates.idLabel") }}</span>
-            <nut-input
+          <Field :label="t('myPage.templates.idLabel')">
+            <TextInput
               v-if="!templateEditingId"
-              class="template-form__input"
-              v-model.trim="templateForm.id"
-              :border="false"
+              v-model="templateForm.id"
               :placeholder="t('myPage.templates.idPlaceholder')"
-              input-align="right"
             />
             <span v-else class="template-form__value is-muted">{{ templateForm.id }}</span>
-          </div>
-          <div class="template-form__row">
-            <span class="template-form__label">{{ t("myPage.templates.nameLabel") }}</span>
-            <div class="template-form__input-wrap">
-              <nut-input
-                class="template-form__input"
-                v-model.trim="templateForm.name"
-                :border="false"
-                :placeholder="t('myPage.templates.namePlaceholder')"
-                input-align="right"
-                :aria-label="t('myPage.templates.nameLabel')"
-              />
-              <span class="template-form__edit-icon" aria-hidden="true">✎</span>
-            </div>
-          </div>
+          </Field>
+          <Field :label="t('myPage.templates.nameLabel')">
+            <TextInput v-model="templateForm.name" :placeholder="t('myPage.templates.namePlaceholder')" />
+          </Field>
           <div class="template-form__row" :class="{ 'is-clickable': !isWideScreen }" @click="!isWideScreen && openTemplateTargetPicker()">
             <span class="template-form__label">{{ t("myPage.templates.target") }}</span>
             <div v-if="isWideScreen" class="template-target-options" role="radiogroup" :aria-label="t('myPage.templates.target')">
@@ -215,17 +189,9 @@
               <nut-icon name="rect-right" size="12px" />
             </span>
           </div>
-          <div class="template-form__row">
-            <span class="template-form__label">{{ t("myPage.templates.remoteUrl") }}</span>
-            <nut-input
-              class="template-form__input"
-              v-model.trim="templateForm.remoteUrl"
-              :border="false"
-              :placeholder="t('myPage.templates.remoteUrlPlaceholder')"
-              input-align="right"
-              :aria-label="t('myPage.templates.remoteUrl')"
-            />
-          </div>
+          <Field :label="t('myPage.templates.remoteUrl')">
+            <TextInput v-model="templateForm.remoteUrl" :placeholder="t('myPage.templates.remoteUrlPlaceholder')" />
+          </Field>
         </div>
         <div class="template-content-editor">
           <CmView v-if="templateImportVisible" :is-read-only="false" :language="templateEditorLanguage" id="TemplateEditor" />
@@ -299,7 +265,9 @@ import { useI18n } from "vue-i18n";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
 
 import { useCloudflareApi } from "@/api/app";
+import { CheckRow, Field, NumberInput, TextInput } from "@/ui";
 import { butifyDate } from "@/utils/butifyDate";
+import { friendlyError } from "@/utils/friendlyError";
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton.vue";
 import DesktopPicker from "@/components/DesktopPicker.vue";
 import { useSettingsApi } from "@/api/settings";
@@ -605,8 +573,8 @@ const saveTemplate = async () => {
   templateImporting.value = true;
   try {
     const payload = {
-      id: templateForm.id,
-      name: templateForm.name || templateForm.id,
+      id: templateForm.id.trim(),
+      name: (templateForm.name || templateForm.id).trim(),
       target: templateForm.target,
       content,
       remoteUrl: templateForm.remoteUrl.trim(),
@@ -860,7 +828,7 @@ const restoreFromFile = async (event: Event) => {
   });
 };
 
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+const errorMessage = (error: unknown) => friendlyError(error);
 
 const hasUnsavedChanges = computed(() => {
   const templateDirty = templateImportVisible.value && isTemplateDirty();
@@ -916,7 +884,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 .profile-block {
@@ -927,18 +895,21 @@ onBeforeUnmount(() => {
     align-items: center;
 
     .tag {
-      margin: 0 5px;
-      padding: 7.5px 2.5px 4px;
+      margin: 0;
+      padding: 3px 8px;
       flex-shrink: 0;
-      color: var(--second-text-color);
-      font-size: 12px;
-      cursor: pointer;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius-sm);
+      background: var(--ui-surface-card);
+      color: var(--ui-text-tertiary);
+      font-size: 11px;
+      letter-spacing: 0.02em;
       user-select: none;
     }
 
     .current {
-      border-bottom: 1px solid var(--primary-color);
-      color: var(--primary-color);
+      border-bottom: 0;
+      color: var(--ui-text-tertiary);
     }
 
     .storage-language-switch {
@@ -963,7 +934,16 @@ onBeforeUnmount(() => {
     align-items: center;
 
     :deep(.nut-avatar) {
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 50%;
       background: var(--card-color);
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
     }
   }
 
@@ -997,8 +977,9 @@ onBeforeUnmount(() => {
 
 .config-card {
   width: 100%;
-  border-radius: var(--item-card-radios);
-  background: var(--card-color);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface-card);
   color: var(--second-text-color);
   overflow: hidden;
 }
@@ -1017,8 +998,8 @@ onBeforeUnmount(() => {
 }
 
 .template-item {
-  min-height: 54px;
-  padding: 10px 16px;
+  min-height: 60px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1045,7 +1026,8 @@ onBeforeUnmount(() => {
 }
 
 .template-title {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--primary-text-color);
 }
 
@@ -1099,17 +1081,36 @@ onBeforeUnmount(() => {
 }
 
 .template-sync-summary {
-  margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin: 10px 20px 0;
+  padding: 4px 8px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-page);
   font-size: 12px;
-  color: var(--comment-text-color);
+  color: var(--ui-text-tertiary);
 }
 
 .template-sync-summary.is-error {
-  color: var(--danger-color, #ff4444);
+  background: color-mix(in srgb, var(--ui-danger) 8%, transparent);
+  color: var(--ui-danger);
 }
 
 .template-meta.is-error {
-  color: var(--danger-color, #ff4444);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-text-secondary);
+}
+
+.template-meta.is-error::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-danger);
 }
 
 .template-action-menu {
@@ -1146,11 +1147,11 @@ onBeforeUnmount(() => {
   background: var(--card-color);
   border-radius: var(--item-card-radios);
   overflow: hidden;
+  padding: 0 16px;
 }
 
 .template-form__row {
   min-height: 50px;
-  padding: 0 16px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1212,63 +1213,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.template-form__input-wrap {
-  flex: 1;
-  min-width: 0;
-  min-height: 36px;
-  padding: 0 2px 0 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-bottom: 1px solid var(--divider-color);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-
-  &:hover {
-    border-bottom-color: var(--second-text-color);
-  }
-
-  &:focus-within {
-    border-bottom-color: var(--primary-color);
-    box-shadow: 0 1px 0 var(--primary-color);
-  }
-}
-
-.template-form__input {
-  flex: 1;
-  min-width: 0;
-  min-height: 34px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-
-  :deep(.nut-input__value),
-  :deep(.nut-input__value input) {
-    padding: 0;
-    background: transparent;
-    background-color: transparent;
-    box-shadow: none;
-    border-radius: 0;
-  }
-}
-
-.template-form__edit-icon {
-  flex: 0 0 auto;
-  color: var(--comment-text-color);
-  font-size: 11px;
-  opacity: 0.65;
-  pointer-events: none;
-}
-
-@media screen and (min-width: 768px) {
-  .template-form__input-wrap {
-    flex: 0 1 340px;
-    width: 340px;
-    max-width: 48%;
-    margin-left: auto;
-  }
-}
-
 .template-content-editor {
   flex: 1 1 auto;
   min-height: 0;
@@ -1304,18 +1248,19 @@ onBeforeUnmount(() => {
 }
 
 .title-wrapper {
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 56px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid var(--divider-color);
+  border-bottom: 1px solid var(--ui-border-subtle);
   cursor: pointer;
 
   h1 {
     margin: 0;
     font-size: 15px;
+    font-weight: 600;
     color: var(--primary-text-color);
   }
 }
@@ -1337,76 +1282,16 @@ onBeforeUnmount(() => {
 
 .card-desc {
   margin: 0;
-  padding: 12px 16px 16px;
+  padding: 12px 20px 16px;
   color: var(--comment-text-color);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 .config-input-wrapper {
-  padding: 0 16px 12px;
+  padding: 0 20px 12px;
   display: flex;
   flex-direction: column;
-
-  .setting-row {
-    min-height: 50px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 14px;
-
-    & + .setting-row {
-      border-top: 1px solid var(--divider-color);
-    }
-  }
-
-  .setting-row + .setting-error + .setting-row {
-    border-top: 1px solid var(--divider-color);
-  }
-
-  .setting-label {
-    flex: 0 0 auto;
-    color: var(--second-text-color);
-  }
-
-  .setting-error {
-    margin: -4px 0 8px;
-    color: #d93025;
-    font-size: 12px;
-    line-height: 1.5;
-    text-align: right;
-  }
-
-  .setting-input {
-    flex: 1;
-    min-width: 0;
-    min-height: 34px;
-    padding: 0 10px;
-    background: var(--background-color);
-    border-radius: 8px;
-    transition: box-shadow 0.2s ease;
-
-    &:focus-within {
-      box-shadow: 0 0 0 1px var(--primary-color) inset;
-    }
-
-    :deep(.nut-input__value),
-    :deep(.nut-input__value input) {
-      padding: 0;
-      background: transparent;
-      background-color: transparent;
-      box-shadow: none;
-    }
-  }
-}
-
-.boolean-setting {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--second-text-color);
-  font-size: 13px;
 }
 
 @media screen and (max-width: 430px) {

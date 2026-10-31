@@ -21,13 +21,17 @@ export default {
 
     // 组件色
     'status-bar-background-color': '#353642',
-    'background-color': '#353642',
-    'nav-bar-color': '#353642',
-    'tab-bar-color': '#353642cf',
-    'popup-color': '#444654',
-    'divider-color': '#FFFFFF08',
-    'card-color': '#444654',
-    'dialog-color': '#444654',
+    'background-color': '#2A2B34',
+    'nav-bar-color': '#2A2B34CC',
+    'tab-bar-color': '#33343FCC',
+    'popup-color': '#3A3C48',
+    'divider-color': '#FFFFFF0A',
+    'border-color': '#FFFFFF1A',
+    'border-strong-color': '#FFFFFF2B',
+    'field-background-color': '#383A46',
+    'field-border-color': '#FFFFFF1F',
+    'card-color': '#33343F',
+    'dialog-color': '#3A3C48',
     'switch-close-background-color': '#FFFFFF14',
     'switch-active-background-color': '#478EF2',
     'compare-item-background-color': '#444654',
@@ -35,9 +39,9 @@ export default {
     'picker-mask-far-color': '#353642',
 
     // 文字色
-    'primary-text-color': '#bcbac1',
-    'second-text-color': '#FFFFFFBB',
-    'comment-text-color': '#FFFFFF88',
+    'primary-text-color': '#F2F3F5',
+    'second-text-color': '#B4B8C4',
+    'comment-text-color': '#8A8F9C',
     'lowest-text-color': '#FFFFFF36',
 
     // 其他

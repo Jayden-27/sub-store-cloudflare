@@ -31,6 +31,16 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
   return {
     plugins: [
       htmlPlugin(),
+      // 把 NutUI 组件样式放进 vendor 层，应用样式（未分层）天然优先，无需 !important
+      {
+        name: "nutui-vendor-layer",
+        enforce: "pre",
+        transform(code: string, id: string) {
+          if (!id.includes("@nutui/nutui")) return null;
+          if (!id.endsWith(".scss")) return null;
+          return `@layer vendor {\n${code}\n}`;
+        },
+      },
       vue(),
       createStyleImportPlugin({
         // resolves: [NutuiResolve()],

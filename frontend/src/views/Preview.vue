@@ -28,8 +28,11 @@
         </template>
       </header>
       <div v-if="!url && !previewCode.trim()" class="preview-empty">
-        <p>{{ t('comparePage.previewEmpty') }}</p>
-        <router-link class="preview-empty-link" to="/subs">{{ t('comparePage.previewBack') }}</router-link>
+        <EmptyState :title="t('comparePage.previewEmpty')">
+          <template #action>
+            <router-link class="preview-empty-link" to="/subs">{{ t('comparePage.previewBack') }}</router-link>
+          </template>
+        </EmptyState>
       </div>
       <cmView v-else :isReadOnly="false" id="subscriptionPreview" />
     </div>
@@ -44,6 +47,7 @@ import { useClipboard } from "@vueuse/core";
 import useV3Clipboard from "vue-clipboard3";
 import { useAppNotifyStore } from "@/store/appNotify";
 import cmView from "@/views/editCode/cmView.vue";
+import { EmptyState } from "@/ui";
 import { useCodeStore } from "@/store/codeStore";
 import { useRoute } from 'vue-router';
 import { useRouter } from 'vue-router';

@@ -29,9 +29,8 @@
       </draggable>
     </div>
     <div class="input-wrapper">
-      <nut-input
-       class="custom-input"
-        label=""
+      <TextInput
+        class="custom-input"
         :placeholder="
           $t(`editorPage.subConfig.nodeActions['${type}'].field.placeholder`)
         "
@@ -71,8 +70,7 @@
         {{ $t(`editorPage.subConfig.nodeActions['${type}'].template.des`) }}
       </p>
       <div class="input-wrapper">
-        <nut-input
-          label=""
+        <TextInput
           :placeholder="
             $t(
               `editorPage.subConfig.nodeActions['${type}'].template.placeholder`
@@ -85,8 +83,7 @@
         {{ $t(`editorPage.subConfig.nodeActions['${type}'].link.des`) }}
       </p>
       <div class="input-wrapper">
-        <nut-input
-          label=""
+        <TextInput
           :placeholder="
             $t(`editorPage.subConfig.nodeActions['${type}'].link.placeholder`)
           "
@@ -98,6 +95,7 @@
 </template>
 
 <script lang="ts" setup>
+  import { TextInput } from '@/ui';
   import { useI18n } from 'vue-i18n';
   import { Dialog } from '@nutui/nutui';
   import { inject, onMounted, watch, reactive, toRaw, ref, computed } from 'vue';

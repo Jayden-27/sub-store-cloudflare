@@ -25,6 +25,8 @@ export default {
       failedStatusOnly: "Request failed: {status}",
       failed: "Request failed",
       network: "Network error or backend unavailable\n",
+      networkRetry: "Connection failed. Check your network or proxy and try again.",
+      timeout: "Request timed out. Please try again later.",
       noResponse: "No response received"
     }
   },
@@ -130,6 +132,8 @@ export default {
   },
   subPage: {
     batch: {
+      title: "Batch actions",
+      close: "Close",
       sources: "Sources",
       collections: "Collections",
       selectAll: "Select all",

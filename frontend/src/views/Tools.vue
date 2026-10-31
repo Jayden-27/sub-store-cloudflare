@@ -1,16 +1,9 @@
 <template>
   <div class="tools-page">
-    <section class="tool-card">
-      <h2>{{ t('toolsPage.converter.title') }}</h2>
-      <p>{{ t('toolsPage.converter.desc') }}</p>
+    <Card :title="t('toolsPage.converter.title')" :description="t('toolsPage.converter.desc')">
       <div class="row">
-        <select v-model="conversionKind">
-          <option value="proxy">{{ t('toolsPage.converter.proxy') }}</option>
-          <option value="rule">{{ t('toolsPage.converter.rule') }}</option>
-        </select>
-        <select v-model="conversionTarget">
-          <option v-for="target in conversionTargets" :key="target" :value="target">{{ target }}</option>
-        </select>
+        <SelectInput v-model="conversionKind" :options="conversionKindOptions" />
+        <SelectInput v-model="conversionTarget" :options="conversionTargetOptions" />
       </div>
       <textarea v-model="conversionInput" :placeholder="t('toolsPage.converter.input')" />
       <div class="actions">
@@ -19,11 +12,9 @@
       </div>
       <textarea v-model="conversionOutput" readonly :placeholder="t('toolsPage.converter.output')" />
       <p v-if="conversionStats" class="stats">{{ conversionStats }}</p>
-    </section>
+    </Card>
 
-    <section class="tool-card">
-      <h2>{{ t('toolsPage.upstreamImport.title') }}</h2>
-      <p>{{ t('toolsPage.upstreamImport.desc') }}</p>
+    <Card :title="t('toolsPage.upstreamImport.title')" :description="t('toolsPage.upstreamImport.desc')">
       <input
         ref="upstreamFileInput"
         type="file"
@@ -48,75 +39,73 @@
         </p>
         <p v-for="warning in upstreamWarnings" :key="warning" class="stats is-warning">{{ warning }}</p>
       </template>
-    </section>
+    </Card>
 
-    <section class="tool-card">
-      <h2>{{ t('toolsPage.shares.title') }}</h2>
-      <p>{{ t('toolsPage.shares.desc') }}</p>
-      <div class="row share-form">
-        <label class="share-field share-field--type">
-          <span class="share-field-label">{{ t('toolsPage.shares.resourceType') }}</span>
-          <select v-model="shareForm.resourceType" @change="handleShareResourceTypeChange">
-            <option value="source">{{ t('toolsPage.shares.source') }}</option>
-            <option value="collection">{{ t('toolsPage.shares.collection') }}</option>
-          </select>
-        </label>
-        <label class="share-field share-field--resource">
-          <span class="share-field-label">{{ t('toolsPage.shares.resourceId') }}</span>
-          <select v-model="shareForm.resourceId" :disabled="shareResourceOptions.length === 0">
-            <option value="" disabled hidden>
-              {{ shareResourceOptions.length > 0 ? t('toolsPage.shares.resourcePlaceholder') : t('toolsPage.shares.noResources') }}
-            </option>
-            <option v-for="option in shareResourceOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
-        <label class="share-field share-field--target">
-          <span class="share-field-label">{{ t('toolsPage.shares.targetLabel') }}</span>
-          <select v-model="shareForm.target">
-            <option value="">{{ t('toolsPage.shares.autoTarget') }}</option>
-            <option v-for="target in proxyTargets" :key="target" :value="target">{{ target }}</option>
-          </select>
-        </label>
-        <label class="share-field share-field--expiry">
-          <span class="share-field-label">
-            {{ t('toolsPage.shares.expiresLabel') }}
-            <small>{{ t('toolsPage.shares.expiresHint') }}</small>
-          </span>
-          <input v-model="shareForm.expiresHours" type="number" min="0" max="8760" placeholder="0" />
-        </label>
+    <Card :title="t('toolsPage.shares.title')" :description="t('toolsPage.shares.desc')">
+      <div class="share-form">
+        <Field
+          layout="stacked"
+          class="share-field--type"
+          :label="t('toolsPage.shares.resourceType')"
+        >
+          <SelectInput
+            v-model="shareForm.resourceType"
+            :options="shareTypeOptions"
+            @update:model-value="handleShareResourceTypeChange"
+          />
+        </Field>
+        <Field
+          layout="stacked"
+          class="share-field--resource"
+          :label="t('toolsPage.shares.resourceId')"
+        >
+          <SelectInput
+            v-model="shareForm.resourceId"
+            :options="shareResourceOptions"
+            :disabled="shareResourceOptions.length === 0"
+            :placeholder="shareResourceOptions.length > 0 ? t('toolsPage.shares.resourcePlaceholder') : t('toolsPage.shares.noResources')"
+          />
+        </Field>
+        <Field
+          layout="stacked"
+          class="share-field--target"
+          :label="t('toolsPage.shares.targetLabel')"
+        >
+          <SelectInput v-model="shareForm.target" :options="shareTargetOptions" />
+        </Field>
+        <Field
+          layout="stacked"
+          class="share-field--expiry"
+          :label="t('toolsPage.shares.expiresLabel')"
+          :hint="t('toolsPage.shares.expiresHint')"
+        >
+          <NumberInput v-model="shareForm.expiresHours" placeholder="0" />
+        </Field>
       </div>
       <nut-button type="primary" :loading="shareCreating" :disabled="!shareForm.resourceId" @click="createShare">{{ t('toolsPage.shares.create') }}</nut-button>
       <div v-if="createdShareUrl" class="created-link" @click="copyText(createdShareUrl)">{{ createdShareUrl }}</div>
-      <p v-if="shares.length === 0" class="empty">{{ t('toolsPage.shares.empty') }}</p>
-      <div v-for="share in shares" :key="share.id" class="list-item">
-        <div>
-          <strong>{{ share.resourceType }}/{{ share.resourceId }}</strong>
-          <small>{{ share.target || 'auto' }} · {{ share.expiresAt ? new Date(share.expiresAt).toLocaleString() : 'never' }}</small>
-        </div>
-        <div class="actions">
+      <EmptyState v-if="shares.length === 0" :title="t('toolsPage.shares.empty')" />
+      <ListRow v-for="share in shares" :key="share.id">
+        <template #title>{{ share.resourceType }}/{{ share.resourceId }}</template>
+        <template #meta>{{ share.target || 'auto' }} · {{ share.expiresAt ? new Date(share.expiresAt).toLocaleString() : 'never' }}</template>
+        <template #actions>
           <nut-button plain size="mini" @click="toggleShare(share)">{{ share.enabled ? t('toolsPage.shares.disable') : t('toolsPage.shares.enable') }}</nut-button>
           <nut-button plain type="danger" size="mini" @click="removeShare(share.id)">{{ t('myPage.btn.delete') }}</nut-button>
-        </div>
-      </div>
-    </section>
+        </template>
+      </ListRow>
+    </Card>
 
-    <section class="tool-card">
-      <h2>{{ t('toolsPage.recycle.title') }}</h2>
-      <p>{{ t('toolsPage.recycle.desc') }}</p>
-      <p v-if="recycleEntries.length === 0" class="empty">{{ t('toolsPage.recycle.empty') }}</p>
-      <div v-for="entry in recycleEntries" :key="entry.id" class="list-item">
-        <div>
-          <strong>{{ entry.resourceType }}/{{ entry.resourceId }}</strong>
-          <small>{{ new Date(entry.deletedAt).toLocaleString() }}</small>
-        </div>
-        <div class="actions">
+    <Card :title="t('toolsPage.recycle.title')" :description="t('toolsPage.recycle.desc')">
+      <EmptyState v-if="recycleEntries.length === 0" :title="t('toolsPage.recycle.empty')" />
+      <ListRow v-for="entry in recycleEntries" :key="entry.id">
+        <template #title>{{ entry.resourceType }}/{{ entry.resourceId }}</template>
+        <template #meta>{{ new Date(entry.deletedAt).toLocaleString() }}</template>
+        <template #actions>
           <nut-button plain type="primary" size="mini" @click="restoreEntry(entry.id)">{{ t('toolsPage.recycle.restore') }}</nut-button>
           <nut-button plain type="danger" size="mini" @click="purgeEntry(entry.id)">{{ t('toolsPage.recycle.purge') }}</nut-button>
-        </div>
-      </div>
-    </section>
+        </template>
+      </ListRow>
+    </Card>
   </div>
 </template>
 
@@ -125,6 +114,9 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useCloudflareApi } from '@/api/app';
 import { useAppNotifyStore } from '@/store/appNotify';
+import { Card, EmptyState, Field, ListRow, NumberInput, SelectInput } from '@/ui';
+import type { SelectOption } from '@/ui';
+import { friendlyError } from '@/utils/friendlyError';
 import { planUpstreamImport, type UpstreamImportPlan } from '@/utils/upstreamImport';
 
 const { t } = useI18n();
@@ -209,6 +201,21 @@ const shareResources = reactive({
 });
 const shareResourceOptions = computed(() => shareResources[shareForm.resourceType as 'source' | 'collection']);
 const conversionTargets = computed(() => conversionKind.value === 'proxy' ? proxyTargets : ruleTargets);
+const conversionKindOptions = computed<SelectOption[]>(() => [
+  { value: 'proxy', label: t('toolsPage.converter.proxy') },
+  { value: 'rule', label: t('toolsPage.converter.rule') },
+]);
+const conversionTargetOptions = computed<SelectOption[]>(() =>
+  conversionTargets.value.map((value) => ({ value, label: value })),
+);
+const shareTypeOptions = computed<SelectOption[]>(() => [
+  { value: 'source', label: t('toolsPage.shares.source') },
+  { value: 'collection', label: t('toolsPage.shares.collection') },
+]);
+const shareTargetOptions = computed<SelectOption[]>(() => [
+  { value: '', label: t('toolsPage.shares.autoTarget') },
+  ...proxyTargets.map((value) => ({ value, label: value })),
+]);
 
 const toShareResourceOptions = (items: any[]) => {
   const resources = items.map((item) => {
@@ -289,37 +296,29 @@ const removeShare = async (id: string) => { await api.deleteShare(id); await Pro
 const restoreEntry = async (id: string) => { await api.restoreRecycleEntry(id); await loadRecycle(); };
 const purgeEntry = async (id: string) => { await api.deleteRecycleEntry(id); await loadRecycle(); };
 const copyText = async (value: string) => { await navigator.clipboard.writeText(value); showNotify({ type: 'success', title: t('toolsPage.notify.copied') }); };
-const notifyError = (error: unknown) => showNotify({ type: 'danger', title: t('toolsPage.notify.failed', { e: error instanceof Error ? error.message : String(error) }) });
+const notifyError = (error: unknown) => showNotify({ type: 'danger', title: t('toolsPage.notify.failed', { e: friendlyError(error) }) });
 
 onMounted(() => Promise.all([loadShares(), loadRecycle(), loadShareResources()]));
 </script>
 
 <style lang="scss" scoped>
-.tools-page { min-height: 100%; padding: var(--safe-area-side); display: flex; flex-direction: column; gap: 10px; }
-.tool-card { padding: 16px; border-radius: var(--item-card-radios); background: var(--card-color); color: var(--second-text-color); }
-h2 { margin: 0; color: var(--primary-text-color); font-size: 16px; }
-p { color: var(--comment-text-color); font-size: 12px; line-height: 1.6; }
+.tools-page { min-height: 100%; padding: var(--safe-area-side); display: flex; flex-direction: column; gap: 16px; }
+.tools-page input[type="file"] { display: none; }
 .row { display: flex; gap: 8px; margin-bottom: 8px; }
-select, input, textarea { box-sizing: border-box; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--background-color); color: var(--primary-text-color); }
-select, input { min-height: 38px; padding: 0 10px; }
-textarea { width: 100%; min-height: 150px; padding: 10px; resize: vertical; font-family: monospace; }
+textarea { box-sizing: border-box; width: 100%; min-height: 150px; padding: 10px; resize: vertical; font-family: monospace; border: 1px solid var(--ui-border-field); border-radius: var(--ui-radius-md); background: var(--ui-surface-field); color: var(--ui-text-primary); }
 .actions { display: flex; gap: 8px; margin: 8px 0; }
-.share-form { flex-wrap: wrap; align-items: flex-end; row-gap: 10px; }
-.share-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.share-field select, .share-field input { width: 100%; }
+.share-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
 .share-field--type { flex: 0 0 120px; }
 .share-field--resource { flex: 1 1 220px; }
 .share-field--target { flex: 0 0 150px; }
 .share-field--expiry { flex: 0 0 190px; }
-.share-field-label { display: flex; align-items: baseline; gap: 6px; color: var(--comment-text-color); font-size: 12px; }
-.share-field-label small { font-size: 11px; color: var(--comment-text-color); }
-.created-link { margin: 10px 0; padding: 10px; border-radius: 8px; background: var(--background-color); overflow-wrap: anywhere; cursor: copy; font-size: 12px; }
-.list-item { min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--divider-color); }
-.list-item div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.list-item strong { color: var(--primary-text-color); font-size: 13px; overflow-wrap: anywhere; }
-.list-item small, .stats, .empty { color: var(--comment-text-color); }
-.stats.is-error { color: var(--danger-color, #ff4444); }
+.created-link { margin: 10px 0; padding: 10px; border-radius: var(--ui-radius-md); background: var(--ui-surface-page); overflow-wrap: anywhere; cursor: copy; font-size: var(--ui-font-xs); }
+.stats, .empty { color: var(--ui-text-tertiary); }
+.stats.is-error { color: var(--ui-danger, #ff4444); }
 .stats.is-warning { color: #d48806; }
-@media (max-width: 720px) { .share-form { flex-direction: column; align-items: stretch; } .share-field { flex-basis: auto; } }
-@media (max-width: 520px) { .row { flex-direction: column; } .list-item { align-items: flex-start; flex-direction: column; padding: 10px 0; } }
+@media (max-width: 720px) {
+  .share-form { flex-direction: column; align-items: stretch; }
+  .share-field--type, .share-field--resource, .share-field--target, .share-field--expiry { flex-basis: auto; }
+}
+@media (max-width: 520px) { .row { flex-direction: column; } }
 </style>

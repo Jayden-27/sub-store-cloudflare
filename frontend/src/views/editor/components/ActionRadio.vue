@@ -11,7 +11,7 @@
             class="input-wrapper compact-input-wrapper compact-input-wrapper--custom"
             v-if="type === 'Resolve Domain Operator' && value==='Custom' && key==='Custom'"
           >
-            <nut-input :placeholder="$t(`editorPage.subConfig.nodeActions['${type}'].customDohPlaceholder`)" v-model="rdoUrl" />
+            <TextInput :placeholder="$t(`editorPage.subConfig.nodeActions['${type}'].customDohPlaceholder`)" v-model="rdoUrl" />
           </div>
           <div v-else>
             {{
@@ -25,13 +25,13 @@
       <div class="radio-wrapper options-radio edns-input-option">
         <p class="des-label">{{ $t(`editorPage.subConfig.nodeActions['${type}'].edns`) }}</p>
         <div class="input-wrapper compact-input-wrapper compact-input-wrapper--edns">
-          <nut-input :placeholder="$t(`editorPage.subConfig.nodeActions['${type}'].ednsPlaceholder`)" v-model="rdoEdns" />
+          <TextInput :placeholder="$t(`editorPage.subConfig.nodeActions['${type}'].ednsPlaceholder`)" v-model="rdoEdns" />
         </div>
       </div>
       <div class="radio-wrapper options-radio inline-input-option">
         <p class="des-label">{{ $t(`editorPage.subConfig.nodeActions['${type}'].concurrency`) }}</p>
         <div class="input-wrapper compact-input-wrapper compact-input-wrapper--concurrency">
-          <nut-input
+          <TextInput
             type="number"
             :placeholder="$t(`editorPage.subConfig.nodeActions['${type}'].concurrencyPlaceholder`)"
             v-model="rdoConcurrency"
@@ -65,6 +65,7 @@
 </template>
 
 <script lang="ts" setup>
+  import { TextInput } from '@/ui';
   import { Dialog } from "@nutui/nutui";
   import { inject, onMounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';

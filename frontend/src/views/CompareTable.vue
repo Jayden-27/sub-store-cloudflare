@@ -556,9 +556,9 @@
     width: 100%;
 
     .compare-table-row {
-      padding-top: 20px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--divider-color);
+      padding-top: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--ui-border-subtle);
     }
 
     &--paired {
@@ -612,10 +612,11 @@
     position: sticky;
     z-index: 7;
     top: calc(var(--compare-header-offset) + 62px);
-    border-bottom: 1px solid var(--divider-color);
-    font-weight: bold;
-    background: var(--background-color);
-    color: var(--comment-text-color);
+    border-bottom: 1px solid var(--ui-border);
+    font-weight: 600;
+    font-size: var(--ui-font-xs);
+    background: var(--ui-surface-page);
+    color: var(--ui-text-tertiary);
 
     &.filter-table-head {
       top: calc(var(--compare-header-offset) + 28px);
